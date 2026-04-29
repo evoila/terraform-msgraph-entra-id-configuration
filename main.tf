@@ -20,6 +20,7 @@ resource "msgraph_update_resource" "entra_organization_update" {
 # - restrict tenant creation for non-admin users (allowedToCreateTenants)
 # - restrict security group creation for non-admin users (allowedToCreateSecurityGroups)
 # - restrict guest users to their own properties only (guestUserRoleId)
+# - restrict users from consenting to applications accessing data on their behalf (permissionGrantPoliciesAssigned)
 # - enable self-service password reset (allowedToUseSSPR)
 resource "msgraph_update_resource" "entra_authorization_policy_update" {
   # This resource creates a PATCH (update) request to the authorizationPolicy endpoint `PATCH /policies/authorizationPolicy`
@@ -27,17 +28,21 @@ resource "msgraph_update_resource" "entra_authorization_policy_update" {
   url = "policies/authorizationPolicy"
 
   body = {
-    allowInvitesFrom = var.allow_invites_from
-    allowedToUseSSPR = true
-    guestUserRoleId  = local.guest_user_role_id[var.guest_user_role]
+    allowInvitesFrom                          = var.allow_invites_from
+    allowedToUseSSPR                          = var.allowed_to_use_sspr
+    allowEmailVerifiedUsersToJoinOrganization = false # No variable here as this setting is not recommended to be enabled in most scenarios. See https://learn.microsoft.com/en-us/azure/active-directory/external-identities/allow-email-verified-users-to-join for more details.
+    guestUserRoleId                           = local.guest_user_role_id[var.guest_user_role]
     defaultUserRolePermissions = {
-      allowedToCreateApps           = false
-      allowedToCreateSecurityGroups = false
+      allowedToCreateApps           = var.allowed_to_create_apps
+      allowedToCreateTenants        = var.allowed_to_create_tenants
+      allowedToCreateSecurityGroups = var.allowed_to_create_security_groups
       permissionGrantPoliciesAssigned = [
         "ManagePermissionGrantsForOwnedResource.microsoft-dynamically-managed-permissions-for-chat",
         "ManagePermissionGrantsForOwnedResource.microsoft-dynamically-managed-permissions-for-team",
-        "ManagePermissionGrantsForSelf.microsoft-user-default-allow-consent-apps",
-        "ManagePermissionGrantsForSelf.microsoft-user-default-recommended",
+        # Removed: granting ManagePermissionGrantsForSelf allows user to consent which violates the purpose of this policy.
+        #"ManagePermissionGrantsForSelf.microsoft-user-default-allow-consent-apps",  
+        #"ManagePermissionGrantsForSelf.microsoft-user-default-recommended",
+
       ]
     }
   }
@@ -96,5 +101,16 @@ resource "msgraph_update_resource" "entra_authentication_method_policy_fido2_upd
       isRegistrationRequired = false
       targetType             = "group"
     }]
+  }
+}
+# Disable 3rd party Software OATH tokens
+# see https://learn.microsoft.com/en-us/graph/api/softwareoathauthenticationmethodconfiguration-update
+resource "msgraph_update_resource" "entra_authentication_method_policy_software_oath_update" {
+  url = "policies/authenticationMethodsPolicy/authenticationMethodConfigurations/softwareOath"
+
+  body = {
+    "@odata.type" = "#microsoft.graph.softwareOathAuthenticationMethodConfiguration"
+    state         = try(var.authentication_methods_policy_configuration.software_oath.enabled, false) ? "enabled" : "disabled"
+
   }
 }

@@ -31,6 +31,12 @@ variable "allow_invites_from" {
   }
 }
 
+variable "allowed_to_use_sspr" {
+  type        = bool
+  description = "Indicates whether users are allowed to use Self-Service Password Reset (SSPR). Defaults to `true`."
+  default     = true
+}
+
 variable "guest_user_role" {
   type        = string
   description = "The role that should be granted to guest user. Currently following roles are supported: `user`, `guestUser` and `restrictedGuestUser`. Defaults to `restrictedGuestUser`."
@@ -41,6 +47,26 @@ variable "guest_user_role" {
     error_message = "guest_user_role must be one of \"user\", \"guestUser\", \"restrictedGuestUser\"."
   }
 }
+
+variable "allowed_to_create_apps" {
+  type        = bool
+  description = "Indicates whether users are allowed to create applications. Defaults to `false`."
+  default     = false
+}
+
+variable "allowed_to_create_tenants" {
+  type        = bool
+  description = "Indicates whether users are allowed to create tenants. Defaults to `false`."
+  default     = false
+
+}
+
+variable "allowed_to_create_security_groups" {
+  type        = bool
+  description = "Indicates whether users are allowed to create security groups. Defaults to `false`."
+  default     = false
+}
+
 
 variable "authentication_methods_policy_configuration" {
   type = object({
@@ -56,11 +82,17 @@ variable "authentication_methods_policy_configuration" {
       is_self_service_registration_allowed = optional(bool, true)
       included_groups                      = optional(list(string), [])
       excluded_groups                      = optional(list(string), [])
+    })),
+
+    software_oath = optional(object({
+      enabled = optional(bool, false)
     }))
+
   })
   description = "The configuration for the authentication methods policy."
   default = {
-    email = {}
-    fido2 = {}
+    email         = {}
+    fido2         = {}
+    software_oath = {}
   }
 }

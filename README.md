@@ -19,11 +19,11 @@ The following resources are used by this module:
 
 - [msgraph_update_resource.entra_authentication_method_policy_email_update](https://registry.terraform.io/providers/microsoft/msgraph/latest/docs/resources/update_resource) (resource)
 - [msgraph_update_resource.entra_authentication_method_policy_fido2_update](https://registry.terraform.io/providers/microsoft/msgraph/latest/docs/resources/update_resource) (resource)
+- [msgraph_update_resource.entra_authentication_method_policy_microsoft_authenticator_update](https://registry.terraform.io/providers/microsoft/msgraph/latest/docs/resources/update_resource) (resource)
+- [msgraph_update_resource.entra_authentication_method_policy_software_oath_update](https://registry.terraform.io/providers/microsoft/msgraph/latest/docs/resources/update_resource) (resource)
 - [msgraph_update_resource.entra_authorization_policy_update](https://registry.terraform.io/providers/microsoft/msgraph/latest/docs/resources/update_resource) (resource)
 - [msgraph_update_resource.entra_organization_update](https://registry.terraform.io/providers/microsoft/msgraph/latest/docs/resources/update_resource) (resource)
 - [msgraph_update_resource.entra_security_defaults_update](https://registry.terraform.io/providers/microsoft/msgraph/latest/docs/resources/update_resource) (resource)
-- [msgraph_resource.authorization_policy](https://registry.terraform.io/providers/microsoft/msgraph/latest/docs/data-sources/resource) (data source)
-- [msgraph_resource.organization](https://registry.terraform.io/providers/microsoft/msgraph/latest/docs/data-sources/resource) (data source)
 
 <!-- markdownlint-disable MD013 -->
 ## Required Inputs
@@ -54,14 +54,72 @@ Type: `string`
 
 Default: `"adminsAndGuestInviters"`
 
+### <a name="input_allow_user_apps_consent"></a> [allow\_user\_apps\_consent](#input\_allow\_user\_apps\_consent)
+
+Description: Indicates whether users are allowed to grant permissions (consent) to applications. Defaults to `false`.
+
+Type: `bool`
+
+Default: `false`
+
+### <a name="input_allowed_to_create_apps"></a> [allowed\_to\_create\_apps](#input\_allowed\_to\_create\_apps)
+
+Description: Indicates whether users are allowed to create Application Registrations and Enterprise Apps. Defaults to `false`.
+
+Type: `bool`
+
+Default: `false`
+
+### <a name="input_allowed_to_create_security_groups"></a> [allowed\_to\_create\_security\_groups](#input\_allowed\_to\_create\_security\_groups)
+
+Description: Indicates whether users are allowed to create security groups. Defaults to `false`.
+
+Type: `bool`
+
+Default: `false`
+
+### <a name="input_allowed_to_create_tenants"></a> [allowed\_to\_create\_tenants](#input\_allowed\_to\_create\_tenants)
+
+Description: Indicates whether users are allowed to create tenants. Defaults to `false`.
+
+Type: `bool`
+
+Default: `false`
+
+### <a name="input_allowed_to_use_sspr"></a> [allowed\_to\_use\_sspr](#input\_allowed\_to\_use\_sspr)
+
+Description: Indicates whether users are allowed to use Self-Service Password Reset (SSPR). Defaults to `true`.
+
+Type: `bool`
+
+Default: `true`
+
 ### <a name="input_authentication_methods_policy_configuration"></a> [authentication\_methods\_policy\_configuration](#input\_authentication\_methods\_policy\_configuration)
 
-Description: The configuration for the authentication methods policy.
+Description: An object describing the tenant's authentication methods policy configuration:
+- `microsoft_authenticator` - Configure the Microsoft Authenticator policy
+  - `enabled` - Enables or disables the authentication method. Default to `true`.
+- `email` - Configure the Email OTP policy
+  - `enabled` - Enables or disables the authentication method. Default to `false`.
+  - `allow_external_id_to_use_email_otp` -
+  - `included_groups` - A list of groups that are enabled to use the authentication method. Default to `[]`.
+  - `excluded_groups` - A list of groups groups that are excluded from the policy. Default to `[]`.
+- `fido2` - Configure the FIDO2 policy
+  - `enabled` - Enables or disables the authentication method. Default to `true`.
+  - `is_attestation_enforced` - Determines whether attestation must be enforced for passkey (FIDO2) registration. This property is **deprecated** and will be removed in October 2027. Default to `false`.
+  - `is_self_service_registration_allowed` - Determines if users can register new passkeys (FIDO2). Default to `true`.
+  - `included_groups` - A list of groups that are enabled to use the authentication method. Default to `[]`.
+  - `excluded_groups` - A list of groups groups that are excluded from the policy. Default to `[]`.
+- `software_oath` - Configure the Software OATH policy
+  - `enabled` - Represents whether users can register this authentication method. Default to `false`.
 
 Type:
 
 ```hcl
 object({
+    microsoft_authenticator = optional(object({
+      enabled = optional(bool, true)
+    }))
     email = optional(object({
       enabled                            = optional(bool, false)
       allow_external_id_to_use_email_otp = optional(string, "default")
@@ -69,11 +127,14 @@ object({
       excluded_groups                    = optional(list(string), [])
     }))
     fido2 = optional(object({
-      enabled                              = optional(bool, false)
+      enabled                              = optional(bool, true)
       is_attestation_enforced              = optional(bool, false)
       is_self_service_registration_allowed = optional(bool, true)
       included_groups                      = optional(list(string), [])
       excluded_groups                      = optional(list(string), [])
+    })),
+    software_oath = optional(object({
+      enabled = optional(bool, false)
     }))
   })
 ```
@@ -83,7 +144,9 @@ Default:
 ```json
 {
   "email": {},
-  "fido2": {}
+  "fido2": {},
+  "microsoft_authenticator": {},
+  "software_oath": {}
 }
 ```
 
@@ -115,17 +178,33 @@ Default: `"en"`
 
 The following outputs are exported:
 
+### <a name="output_authentication_method_policy_email"></a> [authentication\_method\_policy\_email](#output\_authentication\_method\_policy\_email)
+
+Description: The tenant's email authentication method confiugration.
+
+### <a name="output_authentication_method_policy_microsoft_authenticator"></a> [authentication\_method\_policy\_microsoft\_authenticator](#output\_authentication\_method\_policy\_microsoft\_authenticator)
+
+Description: The tenant's Microsoft Authenticator authentication method confiugration.
+
+### <a name="output_authentication_method_policy_software_oath"></a> [authentication\_method\_policy\_software\_oath](#output\_authentication\_method\_policy\_software\_oath)
+
+Description: The tenant's software OATH authentication method confiugration.
+
 ### <a name="output_authentication_methods_policy_fido2"></a> [authentication\_methods\_policy\_fido2](#output\_authentication\_methods\_policy\_fido2)
 
-Description: n/a
+Description: The tenant's FIDO2 authentication method confiugration.
 
-### <a name="output_authorization_policy"></a> [authorization\_policy](#output\_authorization\_policy)
+### <a name="output_authorization_policy_properties"></a> [authorization\_policy\_properties](#output\_authorization\_policy\_properties)
 
-Description: The Entra ID tenant authorization policy.
+Description: The tenant authorization policy properties.
 
 ### <a name="output_organization_properties"></a> [organization\_properties](#output\_organization\_properties)
 
-Description: The Entra ID tenant organization properties.
+Description: The tenant organization properties.
+
+### <a name="output_security_defaults_properties"></a> [security\_defaults\_properties](#output\_security\_defaults\_properties)
+
+Description: The tenant security defaults properties.
 
 ## Modules
 

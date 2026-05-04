@@ -1,8 +1,6 @@
 # Update Entra ID tenant/organization properties
-# can be used to set notification email addresses and privacy statement (among a few other properties).
+# see https://learn.microsoft.com/en-us/graph/api/organization-update
 resource "msgraph_update_resource" "entra_organization_update" {
-  # This resource creates a PATCH (update) request to the organizations endpoint `PATCH /organization/{id}`
-  # see https://learn.microsoft.com/en-us/graph/api/organization-update
   url = "organization/${var.tenant_id}"
 
   body = {
@@ -12,39 +10,35 @@ resource "msgraph_update_resource" "entra_organization_update" {
     securityComplianceNotificationMails = [var.tenant_notification_email]
     technicalNotificationMails          = [var.tenant_notification_email]
   }
+
+  response_export_values = {
+    "all" = "@"
+  }
 }
 
-# Update Entra ID authorization policy to...
-# - restrict guest user invitations for non-admin users (allowInvitesFrom)
-# - restrict application creation for non-admin users (allowedToCreateApps)
-# - restrict tenant creation for non-admin users (allowedToCreateTenants)
-# - restrict security group creation for non-admin users (allowedToCreateSecurityGroups)
-# - restrict guest users to their own properties only (guestUserRoleId)
-# - restrict users from consenting to applications accessing data on their behalf (permissionGrantPoliciesAssigned)
-# - enable self-service password reset (allowedToUseSSPR)
+# Update Entra ID authorization policy properties
+# see https://learn.microsoft.com/en-us/graph/api/authorizationpolicy-update
 resource "msgraph_update_resource" "entra_authorization_policy_update" {
-  # This resource creates a PATCH (update) request to the authorizationPolicy endpoint `PATCH /policies/authorizationPolicy`
-  # see https://learn.microsoft.com/en-us/graph/api/authorizationpolicy-update
   url = "policies/authorizationPolicy"
 
   body = {
     allowInvitesFrom                          = var.allow_invites_from
     allowedToUseSSPR                          = var.allowed_to_use_sspr
-    allowEmailVerifiedUsersToJoinOrganization = false # No variable here as this setting is not recommended to be enabled in most scenarios. See https://learn.microsoft.com/en-us/azure/active-directory/external-identities/allow-email-verified-users-to-join for more details.
+    allowEmailVerifiedUsersToJoinOrganization = false # Limited to recommended scenario ONLY. See https://learn.microsoft.com/en-us/azure/active-directory/external-identities/allow-email-verified-users-to-join
     guestUserRoleId                           = local.guest_user_role_id[var.guest_user_role]
     defaultUserRolePermissions = {
       allowedToCreateApps           = var.allowed_to_create_apps
       allowedToCreateTenants        = var.allowed_to_create_tenants
       allowedToCreateSecurityGroups = var.allowed_to_create_security_groups
-      permissionGrantPoliciesAssigned = [
-        "ManagePermissionGrantsForOwnedResource.microsoft-dynamically-managed-permissions-for-chat",
-        "ManagePermissionGrantsForOwnedResource.microsoft-dynamically-managed-permissions-for-team",
-        # Removed: granting ManagePermissionGrantsForSelf allows user to consent which violates the purpose of this policy.
-        #"ManagePermissionGrantsForSelf.microsoft-user-default-allow-consent-apps",  
-        #"ManagePermissionGrantsForSelf.microsoft-user-default-recommended",
 
-      ]
+      # Configure how users consent to applications
+      # see https://learn.microsoft.com/en-us/entra/identity/enterprise-apps/configure-user-consent
+      permissionGrantPoliciesAssigned = var.allow_user_apps_consent ? local.permission_grant_policies_assigned_relaxed : local.permission_grant_policies_assigned_strict
     }
+  }
+
+  response_export_values = {
+    "all" = "@"
   }
 }
 
@@ -56,11 +50,31 @@ resource "msgraph_update_resource" "entra_security_defaults_update" {
   body = {
     isEnabled = var.enable_security_defaults
   }
+
+  response_export_values = {
+    "all" = "@"
+  }
 }
 
-# Configure Entra ID authentication methods policy to restrict the number of authentication methods a user can register
+# Configure Microsoft Authenticator authentication method
+# see https://learn.microsoft.com/en-us/graph/api/microsoftauthenticatorauthenticationmethodconfiguration-update
+resource "msgraph_update_resource" "entra_authentication_method_policy_microsoft_authenticator_update" {
+  url = "policies/authenticationMethodsPolicy/authenticationMethodConfigurations/microsoftAuthenticator"
 
-# Disable Email OTP authentication method
+  body = {
+    "@odata.type" = "#microsoft.graph.microsoftAuthenticatorAuthenticationMethodConfiguration"
+    state         = try(var.authentication_methods_policy_configuration.microsoft_authenticator.enabled, true) ? "enabled" : "disabled"
+
+  }
+
+  response_export_values = {
+    "all" = "@"
+  }
+}
+
+
+# Configure Email OTP authentication method
+# see https://learn.microsoft.com/en-us/graph/api/emailauthenticationmethodconfiguration-update
 resource "msgraph_update_resource" "entra_authentication_method_policy_email_update" {
   url = "policies/authenticationMethodsPolicy/authenticationMethodConfigurations/email"
 
@@ -79,9 +93,14 @@ resource "msgraph_update_resource" "entra_authentication_method_policy_email_upd
       targetType             = "group"
     }]
   }
+
+  response_export_values = {
+    "all" = "@"
+  }
 }
 
-# Enable FIDO2 authentication method
+# Configure FIDO2 authentication method
+# see https://learn.microsoft.com/en-us/graph/api/fido2authenticationmethodconfiguration-update
 resource "msgraph_update_resource" "entra_authentication_method_policy_fido2_update" {
   url = "policies/authenticationMethodsPolicy/authenticationMethodConfigurations/fido2"
 
@@ -102,8 +121,13 @@ resource "msgraph_update_resource" "entra_authentication_method_policy_fido2_upd
       targetType             = "group"
     }]
   }
+
+  response_export_values = {
+    "all" = "@"
+  }
 }
-# Disable 3rd party Software OATH tokens
+
+# Configure 3rd party Software OATH authentication method
 # see https://learn.microsoft.com/en-us/graph/api/softwareoathauthenticationmethodconfiguration-update
 resource "msgraph_update_resource" "entra_authentication_method_policy_software_oath_update" {
   url = "policies/authenticationMethodsPolicy/authenticationMethodConfigurations/softwareOath"
@@ -112,5 +136,9 @@ resource "msgraph_update_resource" "entra_authentication_method_policy_software_
     "@odata.type" = "#microsoft.graph.softwareOathAuthenticationMethodConfiguration"
     state         = try(var.authentication_methods_policy_configuration.software_oath.enabled, false) ? "enabled" : "disabled"
 
+  }
+
+  response_export_values = {
+    "all" = "@"
   }
 }

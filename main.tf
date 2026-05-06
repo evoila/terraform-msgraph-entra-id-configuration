@@ -33,7 +33,7 @@ resource "msgraph_update_resource" "entra_authorization_policy_update" {
 
       # Configure how users consent to applications
       # see https://learn.microsoft.com/en-us/entra/identity/enterprise-apps/configure-user-consent
-      permissionGrantPoliciesAssigned = var.allow_user_apps_consent ? local.permission_grant_policies_assigned_relaxed : local.permission_grant_policies_assigned_strict
+      permissionGrantPoliciesAssigned = var.allow_user_apps_consent ? local.permission_grant_policies_assigned_with_user_consent : var.permission_grant_policies_assigned
     }
   }
 

@@ -20,4 +20,12 @@ locals {
     "ManagePermissionGrantsForSelf.microsoft-user-default-allow-consent-apps",
     "ManagePermissionGrantsForSelf.microsoft-user-default-recommended",
   ]
+
+  permission_grant_policies_assigned_with_user_consent = merge(
+    var.permission_grant_policies_assigned,
+    "ManagePermissionGrantsForSelf.microsoft-user-default-allow-consent-apps",
+    "ManagePermissionGrantsForSelf.microsoft-user-default-recommended",
+  )
 }
+
+

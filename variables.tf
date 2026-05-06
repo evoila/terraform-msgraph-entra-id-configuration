@@ -73,6 +73,15 @@ variable "allow_user_apps_consent" {
   default     = false
 }
 
+variable "permission_grant_policies_assigned" {
+  type        = list(string)
+  description = "A list of permission grant policies to assign to users. See https://learn.microsoft.com/en-us/entra/identity/enterprise-apps/configure-user-consent for more details."
+  default = [
+    "ManagePermissionGrantsForOwnedResource.microsoft-dynamically-managed-permissions-for-chat",
+    "ManagePermissionGrantsForOwnedResource.microsoft-dynamically-managed-permissions-for-team"
+  ]
+}
+
 variable "authentication_methods_policy_configuration" {
   type = object({
     microsoft_authenticator = optional(object({

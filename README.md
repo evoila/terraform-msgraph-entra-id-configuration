@@ -166,6 +166,21 @@ Type: `string`
 
 Default: `"restrictedGuestUser"`
 
+### <a name="input_permission_grant_policies_assigned"></a> [permission\_grant\_policies\_assigned](#input\_permission\_grant\_policies\_assigned)
+
+Description: A list of permission grant policies to assign to users. See https://learn.microsoft.com/en-us/entra/identity/enterprise-apps/configure-user-consent for more details.
+
+Type: `list(string)`
+
+Default:
+
+```json
+[
+  "ManagePermissionGrantsForOwnedResource.microsoft-dynamically-managed-permissions-for-chat",
+  "ManagePermissionGrantsForOwnedResource.microsoft-dynamically-managed-permissions-for-team"
+]
+```
+
 ### <a name="input_tenant_language"></a> [tenant\_language](#input\_tenant\_language)
 
 Description: The Entra ID tenant default language. Defaults to `en`.

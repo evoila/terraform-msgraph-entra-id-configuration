@@ -7,20 +7,6 @@ locals {
     restrictedGuestUser = "2af84b1e-32c8-42b7-82bc-daa82404023b"
   }
 
-  # Disallow user consent to applications
-  permission_grant_policies_assigned_strict = [
-    "ManagePermissionGrantsForOwnedResource.microsoft-dynamically-managed-permissions-for-chat",
-    "ManagePermissionGrantsForOwnedResource.microsoft-dynamically-managed-permissions-for-team"
-  ]
-
-  # Disallow user consent to applications
-  permission_grant_policies_assigned_relaxed = [
-    "ManagePermissionGrantsForOwnedResource.microsoft-dynamically-managed-permissions-for-chat",
-    "ManagePermissionGrantsForOwnedResource.microsoft-dynamically-managed-permissions-for-team",
-    "ManagePermissionGrantsForSelf.microsoft-user-default-allow-consent-apps",
-    "ManagePermissionGrantsForSelf.microsoft-user-default-recommended",
-  ]
-
   permission_grant_policies_assigned_with_user_consent = concat(
     var.permission_grant_policies_assigned,
     [

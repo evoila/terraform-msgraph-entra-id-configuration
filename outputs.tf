@@ -9,7 +9,7 @@ output "authorization_policy_properties" {
 }
 
 output "security_defaults_properties" {
-  value       = msgraph_update_resource.entra_security_defaults_update.output.all
+  value       = try(msgraph_update_resource.entra_security_defaults_update[0].output.all, null)
   description = "The tenant security defaults properties."
 }
 

@@ -58,7 +58,6 @@ variable "allowed_to_create_tenants" {
   type        = bool
   description = "Indicates whether users are allowed to create tenants. Defaults to `false`."
   default     = false
-
 }
 
 variable "allowed_to_create_security_groups" {

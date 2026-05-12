@@ -176,8 +176,8 @@ Default:
 
 ```json
 [
-  "ManagePermissionGrantsForOwnedResource.microsoft-dynamically-managed-permissions-for-team",
-  "ManagePermissionGrantsForOwnedResource.microsoft-dynamically-managed-permissions-for-chat"
+  "ManagePermissionGrantsForOwnedResource.microsoft-dynamically-managed-permissions-for-chat",
+  "ManagePermissionGrantsForOwnedResource.microsoft-dynamically-managed-permissions-for-team"
 ]
 ```
 

@@ -85,23 +85,23 @@ variable "authentication_methods_policy_configuration" {
   type = object({
     microsoft_authenticator = optional(object({
       enabled = optional(bool, true)
-    }))
+    }), {})
     email = optional(object({
       enabled                            = optional(bool, false)
       allow_external_id_to_use_email_otp = optional(string, "default")
       included_groups                    = optional(list(string), [])
       excluded_groups                    = optional(list(string), [])
-    }))
+    }), {})
     fido2 = optional(object({
       enabled                              = optional(bool, true)
       is_attestation_enforced              = optional(bool, false)
       is_self_service_registration_allowed = optional(bool, true)
       included_groups                      = optional(list(string), [])
       excluded_groups                      = optional(list(string), [])
-    })),
+    }), {}),
     software_oath = optional(object({
       enabled = optional(bool, false)
-    }))
+    }), {})
   })
   default = {
     microsoft_authenticator = {}
@@ -115,7 +115,7 @@ variable "authentication_methods_policy_configuration" {
     - `enabled` - Enables or disables the authentication method. Default to `true`.
   - `email` - Configure the Email OTP policy
     - `enabled` - Enables or disables the authentication method. Default to `false`.
-    - `allow_external_id_to_use_email_otp` -
+    - `allow_external_id_to_use_email_otp` - Determines whether email OTP is usable by external users for authentication. The possible values are: `default`, `enabled`, `disabled` or `unknownFutureValue`. Defaults to `default`.
     - `included_groups` - A list of groups that are enabled to use the authentication method. Default to `[]`.
     - `excluded_groups` - A list of groups groups that are excluded from the policy. Default to `[]`.
   - `fido2` - Configure the FIDO2 policy

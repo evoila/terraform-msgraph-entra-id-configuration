@@ -14,4 +14,6 @@ locals {
       "ManagePermissionGrantsForSelf.microsoft-user-default-recommended",
     ]
   )
+
+  domain_detail = { for key, domain in data.msgraph_resource.domains.output.all.value : domain.id => domain }
 }

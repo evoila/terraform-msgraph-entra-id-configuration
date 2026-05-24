@@ -32,3 +32,18 @@ output "authentication_method_policy_software_oath" {
   value       = try(msgraph_update_resource.entra_authentication_method_policy_software_oath_update.output.all, null)
   description = "The tenant's software OATH authentication method confiugration."
 }
+
+output "default_domain" {
+  value       = [for domain in data.msgraph_resource.domains.output.all.value : domain.id if domain.isDefault == true][0]
+  description = "Tenant default domain."
+}
+
+output "domains_detail" {
+  value       = local.domain_detail
+  description = "All configured domains."
+}
+
+output "domain_verification_records" {
+  value       = { for id, domain in data.msgraph_resource.domain_verification_records : id => domain.output.all.value }
+  description = "DNS verification record information for all unverified domains."
+}

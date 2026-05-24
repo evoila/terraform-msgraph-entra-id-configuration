@@ -17,6 +17,8 @@ The following requirements are needed by this module:
 
 The following resources are used by this module:
 
+- [msgraph_resource.domains](https://registry.terraform.io/providers/microsoft/msgraph/latest/docs/resources/resource) (resource)
+- [msgraph_resource_action.domain_verify](https://registry.terraform.io/providers/microsoft/msgraph/latest/docs/resources/resource_action) (resource)
 - [msgraph_update_resource.entra_authentication_method_policy_email_update](https://registry.terraform.io/providers/microsoft/msgraph/latest/docs/resources/update_resource) (resource)
 - [msgraph_update_resource.entra_authentication_method_policy_fido2_update](https://registry.terraform.io/providers/microsoft/msgraph/latest/docs/resources/update_resource) (resource)
 - [msgraph_update_resource.entra_authentication_method_policy_microsoft_authenticator_update](https://registry.terraform.io/providers/microsoft/msgraph/latest/docs/resources/update_resource) (resource)
@@ -24,6 +26,8 @@ The following resources are used by this module:
 - [msgraph_update_resource.entra_authorization_policy_update](https://registry.terraform.io/providers/microsoft/msgraph/latest/docs/resources/update_resource) (resource)
 - [msgraph_update_resource.entra_organization_update](https://registry.terraform.io/providers/microsoft/msgraph/latest/docs/resources/update_resource) (resource)
 - [msgraph_update_resource.entra_security_defaults_update](https://registry.terraform.io/providers/microsoft/msgraph/latest/docs/resources/update_resource) (resource)
+- [msgraph_resource.domain_verification_records](https://registry.terraform.io/providers/microsoft/msgraph/latest/docs/data-sources/resource) (data source)
+- [msgraph_resource.domains](https://registry.terraform.io/providers/microsoft/msgraph/latest/docs/data-sources/resource) (data source)
 
 <!-- markdownlint-disable MD013 -->
 ## Required Inputs
@@ -150,6 +154,31 @@ Default:
 }
 ```
 
+### <a name="input_domains"></a> [domains](#input\_domains)
+
+Description: A map of domains to configure for the Entra tenant. Defaults to `{}` (no domains). The map key is arbitrary; the value supports the following attributes.:
+- `name` - The fully qualified name of the domain.
+- `is_default` - Set to `true` if this is the default domain that is used for user creation. There's only one default domain per tenant. Defaults to `false`.
+- `password_notification_window_in_days` - Specifies the number of days before a user receives notification that their password expires. Defaults to `14` days.
+- `password_validity_period_in_days` - Specifies the length of time that a password is valid before it must be changed. Defaults to `90` days.
+- `supported_services` - The capabilities assigned to the domain. The values can include `Email`, `OfficeCommunicationsOnline` and `Yammer`. Defaults to `[]`.
+- `trigger_verify_action` - Set to true to trigger domain verification. You *must* configure the required DNS records first. Refer to https://learn.microsoft.com/en-us/entra/identity/users/domains-manage for more information. Defaults to `false`.
+
+Type:
+
+```hcl
+map(object({
+    name                                 = string
+    is_default                           = optional(bool, false)
+    password_notification_window_in_days = optional(number, 14)
+    password_validity_period_in_days     = optional(number, 90)
+    supported_services                   = optional(list(string), [])
+    trigger_verify_action                = optional(bool, false)
+  }))
+```
+
+Default: `{}`
+
 ### <a name="input_enable_security_defaults"></a> [enable\_security\_defaults](#input\_enable\_security\_defaults)
 
 Description: Enable Entra ID security defaults. Defaults to `true`. See https://learn.microsoft.com/en-us/entra/fundamentals/security-defaults for more details.
@@ -212,6 +241,18 @@ Description: The tenant's FIDO2 authentication method confiugration.
 ### <a name="output_authorization_policy_properties"></a> [authorization\_policy\_properties](#output\_authorization\_policy\_properties)
 
 Description: The tenant authorization policy properties.
+
+### <a name="output_default_domain"></a> [default\_domain](#output\_default\_domain)
+
+Description: Tenant default domain.
+
+### <a name="output_domain_verification_records"></a> [domain\_verification\_records](#output\_domain\_verification\_records)
+
+Description: DNS verification record information for all unverified domains.
+
+### <a name="output_domains_detail"></a> [domains\_detail](#output\_domains\_detail)
+
+Description: All configured domains.
 
 ### <a name="output_organization_properties"></a> [organization\_properties](#output\_organization\_properties)
 

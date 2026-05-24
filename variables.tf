@@ -128,3 +128,24 @@ variable "authentication_methods_policy_configuration" {
     - `enabled` - Represents whether users can register this authentication method. Default to `false`.
   DESCRIPTION
 }
+
+variable "domains" {
+  type = map(object({
+    name                                 = string
+    is_default                           = optional(bool, false)
+    password_notification_window_in_days = optional(number, 14)
+    password_validity_period_in_days     = optional(number, 90)
+    supported_services                   = optional(list(string), [])
+    trigger_verify_action                = optional(bool, false)
+  }))
+  default     = {}
+  description = <<-DESCRIPTION
+  A map of domains to configure for the Entra tenant. Defaults to `{}` (no domains). The map key is arbitrary; the value supports the following attributes.:
+  - `name` - The fully qualified name of the domain.
+  - `is_default` - Set to `true` if this is the default domain that is used for user creation. There's only one default domain per tenant. Defaults to `false`.
+  - `password_notification_window_in_days` - Specifies the number of days before a user receives notification that their password expires. Defaults to `14` days.
+  - `password_validity_period_in_days` - Specifies the length of time that a password is valid before it must be changed. Defaults to `90` days.
+  - `supported_services` - The capabilities assigned to the domain. The values can include `Email`, `OfficeCommunicationsOnline` and `Yammer`. Defaults to `[]`.
+  - `trigger_verify_action` - Set to true to trigger domain verification. You *must* configure the required DNS records first. Refer to https://learn.microsoft.com/en-us/entra/identity/users/domains-manage for more information. Defaults to `false`.
+  DESCRIPTION
+}

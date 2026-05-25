@@ -43,7 +43,7 @@ resource "msgraph_update_resource" "entra_authorization_policy_update" {
 }
 
 # Configure Entra ID security defaults
-# see https://learn.microsoft.com/en-us/entra/fundamentals/security-defaults
+# see https://learn.microsoft.com/en-us/graph/api/identitysecuritydefaultsenforcementpolicy-update
 resource "msgraph_update_resource" "entra_security_defaults_update" {
   count = var.enable_security_defaults ? 1 : 0
   url   = "policies/identitySecurityDefaultsEnforcementPolicy"

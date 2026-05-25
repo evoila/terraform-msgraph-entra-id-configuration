@@ -15,5 +15,5 @@ locals {
     ]
   )
 
-  domain_detail = { for key, domain in data.msgraph_resource.domains.output.all.value : domain.id => domain }
+  domain_detail = { for key, domain in try(data.msgraph_resource.domains.output.all.value, {}) : domain.id => domain }
 }

@@ -34,7 +34,7 @@ output "authentication_method_policy_software_oath" {
 }
 
 output "default_domain" {
-  value       = [for domain in data.msgraph_resource.domains.output.all.value : domain.id if domain.isDefault == true][0]
+  value       = one([for domain in try(data.msgraph_resource.domains.output.all.value, {}) : domain.id if domain.isDefault == true])
   description = "Tenant default domain."
 }
 
@@ -44,6 +44,6 @@ output "domains_detail" {
 }
 
 output "domain_verification_records" {
-  value       = { for id, domain in data.msgraph_resource.domain_verification_records : id => domain.output.all.value }
+  value       = { for id, domain in try(data.msgraph_resource.domain_verification_records, {}) : id => domain.output.all.value }
   description = "DNS verification record information for all unverified domains."
 }

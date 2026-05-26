@@ -6,7 +6,7 @@ This Terraform module is designed to simplify Entra ID tenant configuration, inc
 
 ## Features
 
-- 🟦 Configure basic [arganization settings](https://learn.microsoft.com/en-us/graph/api/resources/organization).
+- 🟦 Configure basic [organization settings](https://learn.microsoft.com/en-us/graph/api/resources/organization).
 - 🟦 Configure the [authorization policy](https://learn.microsoft.com/en-us/graph/api/resources/authorizationpolicy).
 - ✅ Enable or disable [security defaults](https://learn.microsoft.com/en-us/entra/fundamentals/security-defaults).
 - Configure [authentication methods policies](https://learn.microsoft.com/en-us/graph/api/resources/authenticationmethodspolicies-overview):
@@ -145,6 +145,16 @@ Description: An object describing the tenant's authentication methods policy con
   - `is_self_service_registration_allowed` - Determines if users can register new passkeys (FIDO2). Default to `true`.
   - `included_groups` - A list of groups that are enabled to use the authentication method. Default to `[]`.
   - `excluded_groups` - A list of groups groups that are excluded from the policy. Default to `[]`.
+  - `passkey_profiles` - A list of passkey profile objects.
+    - `id` - The passkey profile identifier. Must be a valid GUID.
+    - `name` - Name of the passkey profile.
+    - `groups` - The groups this profile is used for. Must be one of the groups in `included_groups`.
+    - `passkey_types` - Specifies which types of passkeys are targeted in this passkey profile. The possible values are: `deviceBound`, `synced`, `unknownFutureValue`.
+    - `attestation_enforcement` - Determines whether attestation must be enforced for passkey (FIDO2) registration. The possible values are: `disabled`, `registrationOnly`, `unknownFutureValue`.
+    - `key_restrictions` - Represents the key restrictions that are enforced as part of the FIDO2 security keys authentication methods policy.
+      - `is_enforced` - Determines if the configured key enforcement is enabled.
+      - `enforcement_type` - Enforcement type. The possible values are `allow`, `block`.
+      - `aa_guids` - A list of Authenticator Attestation GUIDs. AADGUIDs define key types and manufacturers.
 - `software_oath` - Configure the Software OATH policy
   - `enabled` - Represents whether users can register this authentication method. Default to `false`.
 
@@ -165,8 +175,23 @@ object({
       enabled                              = optional(bool, true)
       is_attestation_enforced              = optional(bool, false)
       is_self_service_registration_allowed = optional(bool, true)
-      included_groups                      = optional(list(string), [])
+      included_groups                      = optional(list(string), ["all_users"])
       excluded_groups                      = optional(list(string), [])
+      passkey_profiles = optional(list(object({
+        id                      = string
+        name                    = string
+        groups                  = optional(list(string), ["all_users"])
+        passkey_types           = optional(list(string), ["deviceBound", "synced"])
+        attestation_enforcement = optional(string, "disabled")
+        key_restrictions = optional(object({
+          is_enforced      = optional(bool, false)
+          enforcement_type = optional(string, "block")
+          aa_guids         = optional(list(string), [])
+        }), {})
+        })), [{
+        id   = "00000000-0000-0000-0000-000000000001"
+        name = "Default passkey profile"
+      }])
     }), {}),
     software_oath = optional(object({
       enabled = optional(bool, false)
@@ -187,7 +212,7 @@ Default:
 
 ### <a name="input_domains"></a> [domains](#input\_domains)
 
-Description: A map of domains to configure for the Entra tenant. Defaults to `{}` (no domains). The map key is arbitrary; the value supports the following attributes.:
+Description: A map of domains to configure for the Entra tenant. Defaults to `{}` (no domains). The map key is arbitrary; the value supports the following attributes:
 - `name` - The fully qualified name of the domain.
 - `is_default` - Set to `true` if this is the default domain that is used for user creation. There's only one default domain per tenant. Defaults to `false`.
 - `password_notification_window_in_days` - Specifies the number of days before a user receives notification that their password expires. Defaults to `14` days.

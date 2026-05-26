@@ -15,5 +15,18 @@ locals {
     ]
   )
 
+  # 'Translate'
+  fido2_passkey_profiles = [for profile in var.authentication_methods_policy_configuration.fido2.passkey_profiles : {
+    id                     = profile.id
+    name                   = profile.name
+    passkeyTypes           = join(",", profile.passkey_types)
+    attestationEnforcement = profile.attestation_enforcement
+    keyRestrictions = {
+      isEnforced      = profile.key_restrictions.is_enforced
+      enforcementType = profile.key_restrictions.enforcement_type
+      aaGuids         = profile.key_restrictions.aa_guids
+    }
+  }]
+
   domain_detail = { for key, domain in try(data.msgraph_resource.domains.output.all.value, {}) : domain.id => domain }
 }

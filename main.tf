@@ -114,26 +114,24 @@ resource "msgraph_update_resource" "entra_authentication_method_policy_fido2_upd
       id                     = group_id
       isRegistrationRequired = false
       targetType             = "group"
-      allowedPasskeyProfiles = ["00000000-0000-0000-0000-000000000001"]
+      allowedPasskeyProfiles = [for profile in var.authentication_methods_policy_configuration.fido2.passkey_profiles : profile.id if contains(profile.groups, group_id)]
     }]
     excludeTargets = [for group_id in var.authentication_methods_policy_configuration.fido2.excluded_groups : {
       id                     = group_id
       isRegistrationRequired = false
       targetType             = "group"
     }]
-    passkeyProfiles = [
-      {
-        id                     = "00000000-0000-0000-0000-000000000001"
-        name                   = "Default passkey profile"
-        passkeyTypes           = "deviceBound,synced"
-        attestationEnforcement = "disabled"
-        keyRestrictions = {
-          isEnforced      = false
-          enforcementType = "allow"
-          aaGuids         = []
-        }
+    passkeyProfiles = [for profile in var.authentication_methods_policy_configuration.fido2.passkey_profiles : {
+      id                     = profile.id
+      name                   = profile.name
+      passkeyTypes           = join(",", profile.passkey_types)
+      attestationEnforcement = profile.attestation_enforcement
+      keyRestrictions = {
+        isEnforced      = profile.key_restrictions.is_enforced
+        enforcementType = profile.key_restrictions.enforcement_type
+        aaGuids         = profile.key_restrictions.aa_guids
       }
-    ]
+    }]
   }
 
   response_export_values = {

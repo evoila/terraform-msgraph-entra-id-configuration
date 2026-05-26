@@ -9,6 +9,18 @@ variables {
         "66666666-7777-8888-9999-000000000000"
       ]
       excluded_groups = []
+      passkey_profiles = [
+        {
+          id     = "00000000-0000-0000-0000-000000000001"
+          name   = "Default passkey profile"
+          groups = ["11111111-2222-3333-4444-555555555555"]
+        },
+        {
+          id     = "00000000-0000-0000-0000-000000000002"
+          name   = "Some other profile"
+          groups = ["66666666-7777-8888-9999-000000000000"]
+        },
+      ]
     }
   }
 }
@@ -26,13 +38,13 @@ mock_provider "msgraph" {
             id                     = "11111111-2222-3333-4444-555555555555"
             isRegistrationRequired = false
             targetType             = "group"
-            allowedPasskeyProfiles = []
+            allowedPasskeyProfiles = ["00000000-0000-0000-0000-000000000001"]
           },
           {
             id                     = "66666666-7777-8888-9999-000000000000"
             isRegistrationRequired = false
             targetType             = "group"
-            allowedPasskeyProfiles = []
+            allowedPasskeyProfiles = ["00000000-0000-0000-0000-000000000002"]
           }
         ]
         excludeTargets = []
@@ -79,5 +91,19 @@ run "test_target_groups" {
   assert {
     condition     = length(msgraph_update_resource.entra_authentication_method_policy_fido2_update.body.excludeTargets) == length(var.authentication_methods_policy_configuration.fido2.excluded_groups)
     error_message = "Should have the required number of excluded groups"
+  }
+}
+
+run "test_assigned_passkey_profiles" {
+  command = apply
+
+  assert {
+    condition     = contains(msgraph_update_resource.entra_authentication_method_policy_fido2_update.body.includeTargets[0].allowedPasskeyProfiles, "00000000-0000-0000-0000-000000000001")
+    error_message = "The passkey profile '00000000-0000-0000-0000-000000000001' must be assigned to the target group '${msgraph_update_resource.entra_authentication_method_policy_fido2_update.body.includeTargets[0].id}'."
+  }
+
+  assert {
+    condition     = contains(msgraph_update_resource.entra_authentication_method_policy_fido2_update.body.includeTargets[1].allowedPasskeyProfiles, "00000000-0000-0000-0000-000000000002")
+    error_message = "The passkey profile '00000000-0000-0000-0000-000000000002' must be assigned to the target group '${msgraph_update_resource.entra_authentication_method_policy_fido2_update.body.includeTargets[1].id}'."
   }
 }

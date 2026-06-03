@@ -65,6 +65,12 @@ The following resources are used by this module:
 
 The following input variables are required:
 
+### <a name="input_tenant_default_usage_location"></a> [tenant\_default\_usage\_location](#input\_tenant\_default\_usage\_location)
+
+Description: The Entra ID tenant default usage location. This is a two-letter country code (ISO 3166-1 alpha-2).
+
+Type: `string`
+
 ### <a name="input_tenant_id"></a> [tenant\_id](#input\_tenant\_id)
 
 Description: The Entra ID tenant id.
@@ -74,6 +80,31 @@ Type: `string`
 ### <a name="input_tenant_notification_email"></a> [tenant\_notification\_email](#input\_tenant\_notification\_email)
 
 Description: The e-mail address to receive technical notifications from the Entra ID tenant.
+
+Type: `string`
+
+### <a name="input_tenant_privacy_contact_email"></a> [tenant\_privacy\_contact\_email](#input\_tenant\_privacy\_contact\_email)
+
+Description: Privacy contact email address for the tenant privacy profile.
+
+Type: `string`
+
+### <a name="input_tenant_privacy_profile"></a> [tenant\_privacy\_profile](#input\_tenant\_privacy\_profile)
+
+Description: The e-mail address to receive privacy notifications from the Entra ID tenant.
+
+Type:
+
+```hcl
+object({
+    contact_email = string
+    privacy_url   = string
+  })
+```
+
+### <a name="input_tenant_privacy_statement_url"></a> [tenant\_privacy\_statement\_url](#input\_tenant\_privacy\_statement\_url)
+
+Description: Privacy statement URL for the tenant privacy profile.
 
 Type: `string`
 
@@ -273,6 +304,14 @@ Description: The Entra ID tenant default language. Defaults to `en`.
 Type: `string`
 
 Default: `"en"`
+
+### <a name="input_tenant_marketing_notification_email"></a> [tenant\_marketing\_notification\_email](#input\_tenant\_marketing\_notification\_email)
+
+Description: A list of e-mail addresses to receive marketing notifications from the Entra ID tenant.
+
+Type: `list(string)`
+
+Default: `[]`
 
 ## Outputs
 

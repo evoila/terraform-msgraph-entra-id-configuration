@@ -8,10 +8,54 @@ variable "tenant_notification_email" {
   description = "The e-mail address to receive technical notifications from the Entra ID tenant."
 }
 
+variable "tenant_privacy_contact_email" {
+  description = "Privacy contact email address for the tenant privacy profile."
+  type        = string
+
+  validation {
+    condition     = can(regex("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$", var.tenant_privacy_contact_email))
+    error_message = "tenant_privacy_contact_email must be a valid SMTP email address."
+  }
+}
+
+variable "tenant_privacy_statement_url" {
+  description = "Privacy statement URL for the tenant privacy profile."
+  type        = string
+
+  validation {
+    condition     = can(regex("^(https?://)?([\\da-z\\.-]+)\\.([a-z]{2,})([/\\w \\.-]*)*\\/?$", var.tenant_privacy_statement_url))
+    error_message = "tenant_privacy_statement_url must be a valid URL."
+  }
+}
+
+variable "tenant_privacy_profile" {
+  type = object({
+    contact_email = string
+    privacy_url   = string
+  })
+  description = "The e-mail address to receive privacy notifications from the Entra ID tenant."
+}
+
+variable "tenant_marketing_notification_email" {
+  type        = list(string)
+  description = "A list of e-mail addresses to receive marketing notifications from the Entra ID tenant."
+  default     = []
+}
+
 variable "tenant_language" {
   type        = string
   description = "The Entra ID tenant default language. Defaults to `en`."
   default     = "en"
+}
+
+variable "tenant_default_usage_location" {
+  type        = string
+  description = "The Entra ID tenant default usage location. This is a two-letter country code (ISO 3166-1 alpha-2)."
+
+  validation {
+    condition     = can(regex("^[A-Z]{2}$", var.tenant_default_usage_location))
+    error_message = "tenant_default_usage_location must be valid two-letter ISO 3166 country code"
+  }
 }
 
 variable "enable_security_defaults" {

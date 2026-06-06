@@ -3,6 +3,11 @@ output "organization_properties" {
   description = "The tenant organization properties."
 }
 
+output "license_level" {
+  value       = local.tenant_license_level
+  description = "The tenant license level. Can be 'Free', 'P1' or 'P2'."
+}
+
 output "authorization_policy_properties" {
   value       = try(msgraph_update_resource.entra_authorization_policy_update.output.all, null)
   description = "The tenant authorization policy properties."

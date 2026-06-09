@@ -16,3 +16,12 @@ data "msgraph_resource" "domain_verification_records" {
     all = "@"
   }
 }
+
+# Get tenant's SKU service plans
+# see https://learn.microsoft.com/en-us/entra/identity/users/licensing-service-plan-reference
+data "msgraph_resource" "subscribed_skus" {
+  url = "subscribedSkus"
+  response_export_values = {
+    service_plans = "value[].servicePlans"
+  }
+}

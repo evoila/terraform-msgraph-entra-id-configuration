@@ -59,6 +59,7 @@ The following resources are used by this module:
 - [msgraph_update_resource.entra_security_defaults_update](https://registry.terraform.io/providers/microsoft/msgraph/latest/docs/resources/update_resource) (resource)
 - [msgraph_resource.domain_verification_records](https://registry.terraform.io/providers/microsoft/msgraph/latest/docs/data-sources/resource) (data source)
 - [msgraph_resource.domains](https://registry.terraform.io/providers/microsoft/msgraph/latest/docs/data-sources/resource) (data source)
+- [msgraph_resource.subscribed_skus](https://registry.terraform.io/providers/microsoft/msgraph/latest/docs/data-sources/resource) (data source)
 
 <!-- markdownlint-disable MD013 -->
 ## Required Inputs
@@ -309,6 +310,10 @@ Description: DNS verification record information for all unverified domains.
 ### <a name="output_domains_detail"></a> [domains\_detail](#output\_domains\_detail)
 
 Description: All configured domains.
+
+### <a name="output_license_level"></a> [license\_level](#output\_license\_level)
+
+Description: The tenant license level. Can be 'Free', 'P1' or 'P2'.
 
 ### <a name="output_organization_properties"></a> [organization\_properties](#output\_organization\_properties)
 

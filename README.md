@@ -65,46 +65,32 @@ The following resources are used by this module:
 
 The following input variables are required:
 
-### <a name="input_tenant_default_usage_location"></a> [tenant\_default\_usage\_location](#input\_tenant\_default\_usage\_location)
+### <a name="input_organization_configuration"></a> [organization\_configuration](#input\_organization\_configuration)
 
-Description: The Entra ID tenant default usage location. This is a two-letter country code (ISO 3166-1 alpha-2).
-
-Type: `string`
-
-### <a name="input_tenant_id"></a> [tenant\_id](#input\_tenant\_id)
-
-Description: The Entra ID tenant id.
-
-Type: `string`
-
-### <a name="input_tenant_notification_email"></a> [tenant\_notification\_email](#input\_tenant\_notification\_email)
-
-Description: The e-mail address to receive technical notifications from the Entra ID tenant.
-
-Type: `string`
-
-### <a name="input_tenant_privacy_contact_email"></a> [tenant\_privacy\_contact\_email](#input\_tenant\_privacy\_contact\_email)
-
-Description: Privacy contact email address for the tenant privacy profile.
-
-Type: `string`
-
-### <a name="input_tenant_privacy_profile"></a> [tenant\_privacy\_profile](#input\_tenant\_privacy\_profile)
-
-Description: The e-mail address to receive privacy notifications from the Entra ID tenant.
+Description: An object describing the tenant's organization settings:
+- `notification_email` - The e-mail address to receive technical and security compliance notifications from the Entra ID tenant. Required.
+- `language` - The tenant default language as ISO 639-1 code. Defaults to `en`.
+- `default_usage_location` - Two-letter ISO 3166 country code used as usage location for users without an explicit value (e.g. users synced via Entra Connect). Relevant for data residency/GDPR. Defaults to `null` (no change).
+- `marketing_notification_emails` - A list of e-mail addresses to receive marketing notifications. Defaults to `[]` (disabled).
+- `privacy_contact_email` - E-mail address of the global privacy contact. Defaults to `null`.
+- `privacy_statement_url` - URL to the organization's privacy statement. Must start with http:// or https://, max 255 characters. Defaults to `null`.
 
 Type:
 
 ```hcl
 object({
-    contact_email = string
-    privacy_url   = string
+    notification_email            = string
+    language                      = optional(string, "en")
+    default_usage_location        = optional(string, null)
+    marketing_notification_emails = optional(list(string), [])
+    privacy_contact_email         = optional(string, null)
+    privacy_statement_url         = optional(string, null)
   })
 ```
 
-### <a name="input_tenant_privacy_statement_url"></a> [tenant\_privacy\_statement\_url](#input\_tenant\_privacy\_statement\_url)
+### <a name="input_tenant_id"></a> [tenant\_id](#input\_tenant\_id)
 
-Description: Privacy statement URL for the tenant privacy profile.
+Description: The Entra ID tenant id.
 
 Type: `string`
 
@@ -296,22 +282,6 @@ Default:
   "ManagePermissionGrantsForOwnedResource.microsoft-dynamically-managed-permissions-for-team"
 ]
 ```
-
-### <a name="input_tenant_language"></a> [tenant\_language](#input\_tenant\_language)
-
-Description: The Entra ID tenant default language. Defaults to `en`.
-
-Type: `string`
-
-Default: `"en"`
-
-### <a name="input_tenant_marketing_notification_email"></a> [tenant\_marketing\_notification\_email](#input\_tenant\_marketing\_notification\_email)
-
-Description: A list of e-mail addresses to receive marketing notifications from the Entra ID tenant.
-
-Type: `list(string)`
-
-Default: `[]`
 
 ## Outputs
 

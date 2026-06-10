@@ -1,0 +1,6 @@
+{
+  "@odata.type": "#microsoft.graph.accessReviewInactiveUsersQueryScope",
+  "query": "./members/microsoft.graph.user/?$filter=(userType eq 'Guest')",
+  "queryType": "MicrosoftGraph",
+  "inactiveDuration": "${inactive_duration}"
+}

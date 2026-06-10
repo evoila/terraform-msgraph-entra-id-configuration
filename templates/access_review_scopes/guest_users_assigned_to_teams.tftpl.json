@@ -1,0 +1,5 @@
+{
+  "@odata.type": "#microsoft.graph.accessReviewQueryScope",
+  "query": "./members/microsoft.graph.user/?$filter=(userType eq 'Guest')",
+  "queryType": "MicrosoftGraph"
+}

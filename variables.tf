@@ -230,3 +230,124 @@ variable "block_msol_powershell" {
   description = "Indicates whether users are blocked from using MSOL PowerShell. Defaults to `false`."
   default     = false
 }
+
+variable "access_reviews" {
+  type = map(object({
+    display_name              = string
+    description_for_reviewers = string
+    description_for_admins    = optional(string)
+    scope = object({
+      query      = string
+      query_type = optional(string, "MicrosoftGraph")
+      query_root = optional(string)
+    })
+    instance_enumeration_scope = optional(object({
+      query      = string
+      query_type = optional(string, "MicrosoftGraph")
+      query_root = optional(string)
+    }))
+    settings = object({
+      mail_notifications_enabled         = optional(bool, false)
+      reminder_notifications_enabled     = optional(bool, false)
+      justification_required_on_approval = optional(bool, false)
+      instance_duration_in_days          = optional(number, 30)
+      auto_apply_decisions_enabled       = optional(bool, false)
+      apply_actions                      = optional(string, "removeAccessApplyAction")
+      recurrence = object({
+        pattern = optional(object({
+          type              = optional(string, "absoluteMonthly")
+          interval          = optional(number, 12)
+          month             = optional(number, 0)
+          day_of_month      = optional(number, 0)
+          days_of_week      = optional(list(string), [])
+          first_day_of_week = optional(string, "sunday")
+          index             = optional(string, "first")
+        }))
+        range = object({
+          start_date            = string
+          end_date              = optional(string, "9999-12-31")
+          type                  = optional(string, "numbered")
+          number_of_occurrences = optional(number, 0)
+          recurrence_time_zone  = optional(string, null)
+        })
+      })
+
+      default_decision_enabled                 = optional(bool, false)
+      default_decision                         = optional(string, "Recommendation")
+      decision_histories_for_reviewers_enabled = optional(bool, false)
+
+      recommendations_enabled           = optional(bool, true)
+      recommendation_look_back_duration = optional(string)
+    })
+    reviewers = optional(list(object({
+      query      = string
+      query_type = optional(string, "MicrosoftGraph")
+      query_root = optional(string)
+    })), [])
+    fallback_reviewers = optional(list(object({
+      query      = string
+      query_type = optional(string, "MicrosoftGraph")
+      query_root = optional(string)
+    })), [])
+    additional_notification_recipients = optional(list(object({
+      notification_template_type = optional(string, "CompletedAdditionalRecipients")
+      notification_recipient_scope = object({
+        query      = string
+        query_root = optional(string)
+      })
+    })), [])
+  }))
+  default     = {}
+  description = <<-DESCRIPTION
+  A map of access review definitions to configure for the Entra tenant. Defaults to `{}` (no access reviews). The map key is arbitrary; the value supports the following attributes:
+  - `display_name` - Name of access review series.
+  - `description_for_reviewers` - Context of the review provided to reviewers in email notifications. Email notifications support up to 256 characters.
+  - `description_for_admins` - Context of the review provided to admins. Defaults to contents of `description_for_reviewers`.
+  - `scope` - Defines the entities whose access is reviewed. See https://learn.microsoft.com/en-us/graph/api/resources/accessreviewscope.
+    - `query` - The query representing what will be reviewed in an access review.
+    - `query_type` - Indicates the type of query. Types include `MicrosoftGraph` and `ARM`. Defaults to `MicrosoftGraph`.
+    - `query_root` - In the scenario where reviewers need to be specified dynamically, this property is used to indicate the relative source of the query. This property is only required if a relative query is specified. For example, `./manager`.
+  - `instance_enumeration_scope` - In the case of an all groups review, this determines the scope of which groups will be reviewed. See https://learn.microsoft.com/en-us/graph/api/resources/accessreviewscope.
+    - `query` - The query representing what will be reviewed in an access review.
+    - `query_type` - Indicates the type of query. Types include `MicrosoftGraph` and `ARM`. Defaults to `MicrosoftGraph`.
+    - `query_root` - In the scenario where reviewers need to be specified dynamically, this property is used to indicate the relative source of the query. This property is only required if a relative query is specified. For example, `./manager`.
+  - `settings` - The settings for an access review series. Recurrence is determined here..
+    - `mail_notifications_enabled` - Indicates whether emails are enabled or disabled. Defaults to `false`.
+    - `reminder_notifications_enabled` - .
+    - `justification_required_on_approval` - Indicates whether reviewers are required to provide justification with their decision. Defaults to `false`.
+    - `instance_duration_in_days` - Duration of an access review instance in days. Defaults to `30`.
+    - `auto_apply_decisions_enabled` - Indicates whether decisions are automatically applied. When set to `false`, an admin must apply the decisions manually once the reviewer completes the access review. When set to `true`, decisions are applied automatically after the access review instance duration ends, whether or not the reviewers have responded. Defaults to `false`.
+    - `apply_actions` - Describes the actions to take once a review is complete. There are two types that are currently supported: `removeAccessApplyAction` (default) and `disableAndDeleteUserApplyAction`.
+    - `recurrence` - Detailed settings for recurrence using the standard Outlook recurrence object. See https://learn.microsoft.com/en-us/graph/api/resources/patternedrecurrence for details.
+      - `pattern` - The frequency of an event. Do not specify this property for a one-time access review.
+        - `type` - The recurrence pattern type: daily, weekly, absoluteMonthly, relativeMonthly, absoluteYearly, relativeYearly.
+        - `interval` - The number of units between occurrences, where units can be in days, weeks, months, or years, depending on the type.
+        - `month` - The month in which the event occurs. This is a number from 1 to 12.
+        - `day_of_month` - The day of the month on which the event occurs. Required if type is absoluteMonthly or absoluteYearly.
+        - `days_of_week` - A collection of the days of the week on which the event occurs. The possible values are: sunday, monday, tuesday, wednesday, thursday, friday, saturday.
+        - `first_day_of_week` - The first day of the week. The possible values are: sunday, monday, tuesday, wednesday, thursday, friday, saturday. Defaults to `sunday`.
+        - `index` - Specifies on which instance of the allowed days specified in daysOfWeek the event occurs, counted from the first instance in the month. The possible values are: first, second, third, fourth, last. Defaults to `first`.
+      - `range` - The duration of the access review.
+        - `start_date` - The date to start applying the recurrence pattern. The first occurrence of the meeting may be this date or later, depending on the recurrence pattern of the access review.
+        - `end_date` - The date to stop applying the recurrence pattern. Defaults to `9999-12-31` (no end date).
+        - `type` - The recurrence range. The possible values are: `endDate`, `noEnd`, `numbered`. Defaults to `numbered`.
+        - `number_of_occurrences` - The number of times to repeat the event. Required and must be positive if type is `numbered`.
+        - `recurrence_time_zone` - Time zone for the startDate and endDate properties. Defaults to `null`.
+    - `default_decision_enabled` - Indicates whether the default decision is enabled or disabled when reviewers do not respond. Defaults to `false`.
+    - `default_decision` - Decision chosen if defaultDecisionEnabled is enabled. Can be one of `Approve`, `Deny`, or `Recommendation`. Defaults to `Recommendation`.
+    - `decision_histories_for_reviewers_enabled` - Indicates whether decisions on previous access review stages are available for reviewers on an accessReviewInstance with multiple subsequent stages. Defaults to `false`.
+    - `recommendations_enabled` - Indicates whether decision recommendations are enabled or disabled. Defaults to `true`.
+    - `recommendation_look_back_duration` - .
+  - `reviewers` - Defines who the reviewers are. Reviewers can be specified as a static list of users (that is, specific users, group owners, and group members) or dynamically in which every user is reviewed by their manager, group or application owners. If none are specified, the review is a self-review (users review their own access). See https://learn.microsoft.com/en-us/graph/api/resources/accessreviewreviewerscope for more details.
+    - `query` - The query specifying who will be the reviewer.
+    - `query_type` - Indicates the type of query. Types include `MicrosoftGraph` and `ARM`. Defaults to `MicrosoftGraph`.
+    - `query_root` - In the scenario where reviewers need to be specified dynamically, this property is used to indicate the relative source of the query. This property is only required if a relative query, for example, `./manager`, is specified. Possible value: `decisions`.
+  - `fallback_reviewers` - If provided, the fallback reviewers are asked to complete a review if the primary reviewers do not exist. For example, if managers are selected as reviewers and a principal under review does not have a manager in Microsoft Entra ID, the fallback reviewers are asked to review that principal.
+    - `query` - The query specifying who will be the reviewer.
+    - `query_type` - Indicates the type of query. Types include `MicrosoftGraph` and `ARM`. Defaults to `MicrosoftGraph`.
+    - `query_root` - In the scenario where reviewers need to be specified dynamically, this property is used to indicate the relative source of the query. This property is only required if a relative query, for example, `./manager`, is specified. Possible value: `decisions`.
+  - `additional_notification_recipients` - Defines the list of additional users or group members to be notified of the access review progress.
+    - `query` - Represents the query for who the recipients are. For example, `/groups/{group id}/members` for group members and `/users/{user id} for a specific user.
+    - `query_root` - In the scenario where recipients need to be specified dynamically, this property is used to indicate the relative source of the query. This property is only required if a relative query, for example, `./manager`, is specified.
+  DESCRIPTION
+}

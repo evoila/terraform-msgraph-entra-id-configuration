@@ -1,0 +1,25 @@
+{
+  "@odata.type": "#microsoft.graph.principalResourceMembershipsScope",
+  "principalScopes": [
+    {
+      "@odata.type": "#microsoft.graph.accessReviewQueryScope",
+      "query": "/v1.0/users",
+      "queryType": "MicrosoftGraph",
+      "queryRoot": null
+    },
+    {
+      "@odata.type": "#microsoft.graph.accessReviewQueryScope",
+      "query": "./members/microsoft.graph.user",
+      "queryType": "MicrosoftGraph",
+      "queryRoot": "/v1.0/groups"
+    }
+  ],
+  "resourceScopes": [
+    {
+      "@odata.type": "#microsoft.graph.accessReviewQueryScope",
+      "query": "/v1.0/servicePrincipals/${service_principal_id}",
+      "queryType": "MicrosoftGraph",
+      "queryRoot": null
+    }
+  ]
+}

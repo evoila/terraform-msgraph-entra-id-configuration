@@ -1,0 +1,4 @@
+{
+  "query": "/groups?$filter=(groupTypes/any(c:c eq 'Unified') and resourceProvisioningOptions/Any(x:x eq 'Team')')",
+  "queryType": "MicrosoftGraph"
+}

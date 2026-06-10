@@ -1,0 +1,25 @@
+{
+  "@odata.type": "#microsoft.graph.principalResourceMembershipsScope",
+  "principalScopes": [
+    {
+      "@odata.type": "#microsoft.graph.accessReviewQueryScope",
+      "query": "/users",
+      "queryType": "MicrosoftGraph",
+      "queryRoot": null
+    }
+  ],
+  "resourceScopes": [
+    {
+      "@odata.type": "#microsoft.graph.accessReviewQueryScope",
+      "query": "/groups/${group_id}/transitiveMembers",
+      "queryType": "MicrosoftGraph",
+      "queryRoot": null
+    },
+    {
+      "@odata.type": "#microsoft.graph.accessReviewQueryScope",
+      "query": "/teams/${group_id}/channels?$filter=(membershipType eq 'shared')",
+      "queryType": "MicrosoftGraph",
+      "queryRoot": null
+    }
+  ]
+}

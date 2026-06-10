@@ -1,0 +1,5 @@
+{
+  "@odata.type": "#microsoft.graph.accessReviewQueryScope",
+  "query": "/roleManagement/directory/roleAssignmentScheduleInstances?$expand=principal&$filter=(isof(principal,'microsoft.graph.servicePrincipal') and roleDefinitionId eq '${role_id}')",
+  "queryType": "MicrosoftGraph"
+}

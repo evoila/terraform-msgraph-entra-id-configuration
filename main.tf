@@ -4,12 +4,20 @@ resource "msgraph_update_resource" "entra_organization_update" {
   url = "organization/${var.tenant_id}"
 
   body = {
-    preferredLanguage = var.tenant_language
+    preferredLanguage    = var.organization_configuration.language
+    defaultUsageLocation = var.organization_configuration.default_usage_location
 
     # Note: These notification email properties accept arrays but Microsoft Graph API only processes the first email address
-    securityComplianceNotificationMails = [var.tenant_notification_email]
-    technicalNotificationMails          = [var.tenant_notification_email]
+    securityComplianceNotificationMails = [var.organization_configuration.notification_email]
+    technicalNotificationMails          = [var.organization_configuration.notification_email]
+    privacyProfile = {
+      contactEmail = var.organization_configuration.privacy_contact_email
+      statementUrl = var.organization_configuration.privacy_statement_url
+    }
+    marketingNotificationEmails = var.organization_configuration.marketing_notification_emails
   }
+
+
 
   response_export_values = {
     "all" = "@"

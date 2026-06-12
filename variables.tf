@@ -1,17 +1,55 @@
+variable "organization_configuration" {
+  type = object({
+    notification_email            = string
+    language                      = optional(string, "en")
+    default_usage_location        = optional(string, null)
+    marketing_notification_emails = optional(list(string), [])
+    privacy_contact_email         = optional(string, null)
+    privacy_statement_url         = optional(string, null)
+  })
+  description = <<-DESCRIPTION
+  An object describing the tenant's organization settings:
+  - `notification_email` - The e-mail address to receive technical and security compliance notifications from the Entra ID tenant. Required.
+  - `language` - The tenant default language as ISO 639-1 code. Defaults to `en`.
+  - `default_usage_location` - Two-letter ISO 3166 country code used as usage location for users without an explicit value (e.g. users synced via Entra Connect). Relevant for data residency/GDPR. Defaults to `null` (no change).
+  - `marketing_notification_emails` - A list of e-mail addresses to receive marketing notifications. Defaults to `[]` (disabled).
+  - `privacy_contact_email` - E-mail address of the global privacy contact. Defaults to `null`.
+  - `privacy_statement_url` - URL to the organization's privacy statement. Must start with http:// or https://, max 255 characters. Defaults to `null`.
+  DESCRIPTION
+
+  validation {
+    condition     = can(regex("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$", var.organization_configuration.notification_email))
+    error_message = "organization_configuration.notification_email must be a valid SMTP email address."
+  }
+
+  validation {
+    condition = (
+      var.organization_configuration.default_usage_location == null ||
+      can(regex("^[A-Z]{2}$", var.organization_configuration.default_usage_location))
+    )
+    error_message = "organization_configuration.default_usage_location must be a valid two-letter ISO 3166 country code (e.g. 'AT', 'DE')."
+  }
+
+  validation {
+    condition = (
+      var.organization_configuration.privacy_contact_email == null ||
+      can(regex("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$", var.organization_configuration.privacy_contact_email))
+    )
+    error_message = "organization_configuration.privacy_contact_email must be a valid SMTP email address."
+  }
+
+  validation {
+    condition = (
+      var.organization_configuration.privacy_statement_url == null ||
+      (can(regex("^https?://", var.organization_configuration.privacy_statement_url)) && length(var.organization_configuration.privacy_statement_url) <= 255)
+    )
+    error_message = "organization_configuration.privacy_statement_url must start with http:// or https:// and be at most 255 characters."
+  }
+}
+
 variable "tenant_id" {
   type        = string
   description = "The Entra ID tenant id."
-}
-
-variable "tenant_notification_email" {
-  type        = string
-  description = "The e-mail address to receive technical notifications from the Entra ID tenant."
-}
-
-variable "tenant_language" {
-  type        = string
-  description = "The Entra ID tenant default language. Defaults to `en`."
-  default     = "en"
 }
 
 variable "enable_security_defaults" {

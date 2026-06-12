@@ -6,7 +6,7 @@ This Terraform module is designed to simplify Entra ID tenant configuration, inc
 
 ## Features
 
-- 🟦 Configure basic [organization settings](https://learn.microsoft.com/en-us/graph/api/resources/organization).
+- ✅ Configure basic [organization settings](https://learn.microsoft.com/en-us/graph/api/resources/organization).
 - 🟦 Configure the [authorization policy](https://learn.microsoft.com/en-us/graph/api/resources/authorizationpolicy).
 - ✅ Enable or disable [security defaults](https://learn.microsoft.com/en-us/entra/fundamentals/security-defaults).
 - Configure [authentication methods policies](https://learn.microsoft.com/en-us/graph/api/resources/authenticationmethodspolicies-overview):
@@ -66,15 +66,32 @@ The following resources are used by this module:
 
 The following input variables are required:
 
+### <a name="input_organization_configuration"></a> [organization\_configuration](#input\_organization\_configuration)
+
+Description: An object describing the tenant's organization settings:
+- `notification_email` - The e-mail address to receive technical and security compliance notifications from the Entra ID tenant. Required.
+- `language` - The tenant default language as ISO 639-1 code. Defaults to `en`.
+- `default_usage_location` - Two-letter ISO 3166 country code used as usage location for users without an explicit value (e.g. users synced via Entra Connect). Relevant for data residency/GDPR. Defaults to `null` (no change).
+- `marketing_notification_emails` - A list of e-mail addresses to receive marketing notifications. Defaults to `[]` (disabled).
+- `privacy_contact_email` - E-mail address of the global privacy contact. Defaults to `null`.
+- `privacy_statement_url` - URL to the organization's privacy statement. Must start with http:// or https://, max 255 characters. Defaults to `null`.
+
+Type:
+
+```hcl
+object({
+    notification_email            = string
+    language                      = optional(string, "en")
+    default_usage_location        = optional(string, null)
+    marketing_notification_emails = optional(list(string), [])
+    privacy_contact_email         = optional(string, null)
+    privacy_statement_url         = optional(string, null)
+  })
+```
+
 ### <a name="input_tenant_id"></a> [tenant\_id](#input\_tenant\_id)
 
 Description: The Entra ID tenant id.
-
-Type: `string`
-
-### <a name="input_tenant_notification_email"></a> [tenant\_notification\_email](#input\_tenant\_notification\_email)
-
-Description: The e-mail address to receive technical notifications from the Entra ID tenant.
 
 Type: `string`
 
@@ -266,14 +283,6 @@ Default:
   "ManagePermissionGrantsForOwnedResource.microsoft-dynamically-managed-permissions-for-team"
 ]
 ```
-
-### <a name="input_tenant_language"></a> [tenant\_language](#input\_tenant\_language)
-
-Description: The Entra ID tenant default language. Defaults to `en`.
-
-Type: `string`
-
-Default: `"en"`
 
 ## Outputs
 

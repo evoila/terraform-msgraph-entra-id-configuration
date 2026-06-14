@@ -4,7 +4,7 @@ This Terraform module is designed to simplify Entra ID tenant configuration, inc
 
 ## Features
 
-- 🟦 Configure basic [organization settings](https://learn.microsoft.com/en-us/graph/api/resources/organization).
+- ✅ Configure basic [organization settings](https://learn.microsoft.com/en-us/graph/api/resources/organization).
 - 🟦 Configure the [authorization policy](https://learn.microsoft.com/en-us/graph/api/resources/authorizationpolicy).
 - ✅ Enable or disable [security defaults](https://learn.microsoft.com/en-us/entra/fundamentals/security-defaults).
 - Configure [authentication methods policies](https://learn.microsoft.com/en-us/graph/api/resources/authenticationmethodspolicies-overview):
@@ -19,7 +19,7 @@ This Terraform module is designed to simplify Entra ID tenant configuration, inc
   - 🔲 [Verifiable credentials](https://learn.microsoft.com/en-us/graph/api/resources/verifiablecredentialsauthenticationmethodconfiguration)
   - 🔲 [Voice](https://learn.microsoft.com/en-us/graph/api/resources/voiceauthenticationmethodconfiguration)
   - 🔲 [X509 certificate](https://learn.microsoft.com/en-us/graph/api/resources/voiceauthenticationmethodconfiguration)
-- 🟦 Configure [custom domains](https://learn.microsoft.com/en-us/graph/api/resources/domain)
+- ✅ Configure [custom domains](https://learn.microsoft.com/en-us/graph/api/resources/domain)
 
 > **NOTICE**
 >

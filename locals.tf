@@ -15,8 +15,6 @@ locals {
     ]
   )
 
-  domain_detail = { for key, domain in try(data.msgraph_resource.domains.output.all.value, {}) : domain.id => domain }
-
   # Calculate tenant license level based on service plans in the subscribed SKUs
   tenant_service_plan_ids = flatten([
     for sku in flatten(try(data.msgraph_resource.subscribed_skus.output.service_plans, [])) : sku.servicePlanId

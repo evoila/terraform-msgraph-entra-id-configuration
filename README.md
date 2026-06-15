@@ -21,7 +21,7 @@ This Terraform module is designed to simplify Entra ID tenant configuration, inc
   - 🔲 [Verifiable credentials](https://learn.microsoft.com/en-us/graph/api/resources/verifiablecredentialsauthenticationmethodconfiguration)
   - 🔲 [Voice](https://learn.microsoft.com/en-us/graph/api/resources/voiceauthenticationmethodconfiguration)
   - 🔲 [X509 certificate](https://learn.microsoft.com/en-us/graph/api/resources/voiceauthenticationmethodconfiguration)
-- 🟦 Configure [custom domains](https://learn.microsoft.com/en-us/graph/api/resources/domain)
+- ✅ Configure [custom domains](https://learn.microsoft.com/en-us/graph/api/resources/domain)
 
 > **NOTICE**
 >
@@ -50,6 +50,7 @@ The following resources are used by this module:
 
 - [msgraph_resource.domains](https://registry.terraform.io/providers/microsoft/msgraph/latest/docs/resources/resource) (resource)
 - [msgraph_resource_action.domain_verify](https://registry.terraform.io/providers/microsoft/msgraph/latest/docs/resources/resource_action) (resource)
+- [msgraph_update_resource.domain_password_policy](https://registry.terraform.io/providers/microsoft/msgraph/latest/docs/resources/update_resource) (resource)
 - [msgraph_update_resource.entra_authentication_method_policy_email_update](https://registry.terraform.io/providers/microsoft/msgraph/latest/docs/resources/update_resource) (resource)
 - [msgraph_update_resource.entra_authentication_method_policy_fido2_update](https://registry.terraform.io/providers/microsoft/msgraph/latest/docs/resources/update_resource) (resource)
 - [msgraph_update_resource.entra_authentication_method_policy_microsoft_authenticator_update](https://registry.terraform.io/providers/microsoft/msgraph/latest/docs/resources/update_resource) (resource)

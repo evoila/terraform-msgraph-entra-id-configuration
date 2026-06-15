@@ -162,31 +162,3 @@ resource "msgraph_update_resource" "entra_authentication_method_policy_software_
     "all" = "@"
   }
 }
-
-# Configure custom domains for the Entra ID tenant
-# see https://learn.microsoft.com/en-us/graph/api/resources/domain
-resource "msgraph_resource" "domains" {
-  for_each = var.domains
-
-  url = "domains"
-
-  body = {
-    id                               = each.value.name
-    isDefault                        = try(local.domain_detail[each.value.name].isVerified, false) ? each.value.is_default : false
-    passwordNotificationWindowInDays = can(local.domain_detail[each.value.name]) ? each.value.password_notification_window_in_days : null
-    passwordValidityPeriodInDays     = can(local.domain_detail[each.value.name]) ? each.value.password_validity_period_in_days : null
-    supportedServices                = each.value.supported_services
-  }
-}
-
-# Start domain verification process
-# see https://learn.microsoft.com/en-us/graph/api/domain-verify
-resource "msgraph_resource_action" "domain_verify" {
-  for_each = { for key, domain in var.domains : key => domain if domain.trigger_verify_action == true }
-
-  resource_url = "domains/${each.value.name}"
-  action       = "verify"
-  method       = "POST"
-
-  body = {}
-}

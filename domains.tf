@@ -34,7 +34,7 @@ resource "msgraph_update_resource" "domain_password_policy" {
 # Start domain verification process
 # see https://learn.microsoft.com/en-us/graph/api/domain-verify
 resource "msgraph_resource_action" "domain_verify" {
-  for_each = { for key, domain in var.domains : key => domain if domain.trigger_verify_action == true && local.domain_detail[domain.name].isVerified == false }
+  for_each = { for key, domain in var.domains : key => domain if domain.trigger_verify_action == true && try(local.domain_detail[domain.name].isVerified, true) == false }
 
   resource_url = "domains/${each.value.name}"
   action       = "verify"

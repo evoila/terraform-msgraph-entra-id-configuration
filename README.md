@@ -114,6 +114,14 @@ Type: `bool`
 
 Default: `false`
 
+### <a name="input_allow_user_consent_for_risky_apps"></a> [allow\_user\_consent\_for\_risky\_apps](#input\_allow\_user\_consent\_for\_risky\_apps)
+
+Description: Indicates whether users are allowed to consent to risky applications. Microsoft strongly recommends keeping this set to false. See https://learn.microsoft.com/en-us/graph/api/resources/authorizationpolicy
+
+Type: `bool`
+
+Default: `false`
+
 ### <a name="input_allowed_to_create_apps"></a> [allowed\_to\_create\_apps](#input\_allowed\_to\_create\_apps)
 
 Description: Indicates whether users are allowed to create Application Registrations and Enterprise Apps. Defaults to `false`.
@@ -133,6 +141,14 @@ Default: `false`
 ### <a name="input_allowed_to_create_tenants"></a> [allowed\_to\_create\_tenants](#input\_allowed\_to\_create\_tenants)
 
 Description: Indicates whether users are allowed to create tenants. Defaults to `false`.
+
+Type: `bool`
+
+Default: `false`
+
+### <a name="input_allowed_to_sign_up_email_based_subscriptions"></a> [allowed\_to\_sign\_up\_email\_based\_subscriptions](#input\_allowed\_to\_sign\_up\_email\_based\_subscriptions)
+
+Description: Indicates whether users are allowed to sign up for email-based subscriptions. Defaults to `false`.
 
 Type: `bool`
 
@@ -226,6 +242,14 @@ Default:
   "software_oath": {}
 }
 ```
+
+### <a name="input_block_msol_powershell"></a> [block\_msol\_powershell](#input\_block\_msol\_powershell)
+
+Description: Indicates whether users are blocked from using MSOL PowerShell. Defaults to `false`.
+
+Type: `bool`
+
+Default: `false`
 
 ### <a name="input_domains"></a> [domains](#input\_domains)
 

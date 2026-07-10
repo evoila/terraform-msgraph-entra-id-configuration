@@ -1,6 +1,4 @@
 variables {
-  tenant_language           = "en"
-  tenant_notification_email = "jane.doe@contoso.com"
   organization_configuration = {
     notification_email            = "jane.doe@contoso.com"
     language                      = "en"

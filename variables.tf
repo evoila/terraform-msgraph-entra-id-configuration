@@ -212,3 +212,21 @@ variable "domains" {
   - `trigger_verify_action` - Set to true to trigger domain verification. You *must* configure the required DNS records first. Refer to https://learn.microsoft.com/en-us/entra/identity/users/domains-manage for more information. Defaults to `false`.
   DESCRIPTION
 }
+
+variable "allow_user_consent_for_risky_apps" {
+  type        = bool
+  description = "Indicates whether users are allowed to consent to risky applications. Microsoft strongly recommends keeping this set to false. See https://learn.microsoft.com/en-us/graph/api/resources/authorizationpolicy"
+  default     = false
+}
+
+variable "allowed_to_sign_up_email_based_subscriptions" {
+  type        = bool
+  description = "Indicates whether users are allowed to sign up for email-based subscriptions. Defaults to `false`."
+  default     = false
+}
+
+variable "block_msol_powershell" {
+  type        = bool
+  description = "Indicates whether users are blocked from using MSOL PowerShell. Defaults to `false`."
+  default     = false
+}

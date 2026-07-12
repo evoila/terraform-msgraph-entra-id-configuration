@@ -2,7 +2,7 @@
 # see https://learn.microsoft.com/en-us/graph/api/resources/accessreviewsv2-overview
 
 resource "msgraph_resource" "access_review_definition" {
-  for_each = var.access_reviews
+  for_each = local.tenant_has_p2_license ? var.access_reviews : {} # Access reviews required Entra ID P2 license
 
   url           = "identityGovernance/accessReviews/definitions"
   update_method = "PUT"
@@ -12,18 +12,26 @@ resource "msgraph_resource" "access_review_definition" {
     descriptionForReviewers = each.value.description_for_reviewers
     descriptionForAdmins    = coalesce(each.value.description_for_admins, each.value.description_for_reviewers)
 
-    scope = {
+    scope = each.value.scope.template != null ? jsondecode(templatefile(
+      "${path.module}/templates/access_review_scopes/${each.value.scope.template}.tftpl.json",
+      each.value.scope.template_vars
+      )) : {
       "@odata.type" = "#microsoft.graph.accessReviewQueryScope"
       query         = each.value.scope.query
       queryType     = each.value.scope.query_type
       queryRoot     = each.value.scope.query_root
     }
-    instanceEnumerationScope = each.value.instance_enumeration_scope == null ? null : {
-      "@odata.type" = "#microsoft.graph.accessReviewQueryScope"
-      query         = each.value.instance_enumeration_scope.query
-      queryType     = each.value.instance_enumeration_scope.query_type
-      queryRoot     = each.value.instance_enumeration_scope.query_root
-    }
+    instanceEnumerationScope = each.value.instance_enumeration_scope == null ? null : (
+      each.value.instance_enumeration_scope.template != null ? jsondecode(templatefile(
+        "${path.module}/templates/access_review_instance_enumeration_scopes/${each.value.instance_enumeration_scope.template}.tftpl.json",
+        each.value.instance_enumeration_scope.template_vars
+        )) : {
+        "@odata.type" = "#microsoft.graph.accessReviewQueryScope"
+        query         = each.value.instance_enumeration_scope.query
+        queryType     = each.value.instance_enumeration_scope.query_type
+        queryRoot     = each.value.instance_enumeration_scope.query_root
+      }
+    )
 
     settings = {
       mailNotificationsEnabled        = each.value.settings.mail_notifications_enabled
@@ -31,7 +39,6 @@ resource "msgraph_resource" "access_review_definition" {
       justificationRequiredOnApproval = each.value.settings.justification_required_on_approval
       instanceDurationInDays          = each.value.settings.instance_duration_in_days
       autoApplyDecisionsEnabled       = each.value.settings.auto_apply_decisions_enabled
-      applyActions                    = each.value.settings.apply_actions
       recurrence = {
         pattern = each.value.settings.recurrence.pattern == null ? null : {
           type           = each.value.settings.recurrence.pattern.type

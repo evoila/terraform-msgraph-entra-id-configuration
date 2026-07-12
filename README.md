@@ -21,7 +21,8 @@ This Terraform module is designed to simplify Entra ID tenant configuration, inc
   - 🔲 [Verifiable credentials](https://learn.microsoft.com/en-us/graph/api/resources/verifiablecredentialsauthenticationmethodconfiguration)
   - 🔲 [Voice](https://learn.microsoft.com/en-us/graph/api/resources/voiceauthenticationmethodconfiguration)
   - 🔲 [X509 certificate](https://learn.microsoft.com/en-us/graph/api/resources/voiceauthenticationmethodconfiguration)
-- ✅ Configure [custom domains](https://learn.microsoft.com/en-us/graph/api/resources/domain)
+- ✅ Configure [custom domains](https://learn.microsoft.com/en-us/graph/api/resources/domain).
+- 🟦 Configure [access reviews](https://learn.microsoft.com/en-us/graph/api/resources/accessreviewsv2-overview). See below for current limitations.
 
 > **NOTICE**
 >
@@ -34,6 +35,49 @@ This Terraform module is designed to simplify Entra ID tenant configuration, inc
 This module is under development and currently considered a [minimum viable product](https://en.wikipedia.org/wiki/Minimum_viable_product) (MVP). Please create an issue in the [module GitHub repository](https://github.com/evoila/terraform-msgraph-entra-id-configuration/issues) if you have feature requests.
 
 > **IMPORTANT** Microsoft Graph uses an _eventual consistency_ model. This means, changes are not immediately visible after a write. See [designing for eventual consistency for Microsoft Entra](https://devblogs.microsoft.com/identity/designing-for-eventual-consistency-for-microsoft-entra/) for more details.
+
+## Configuring Access Reviews
+
+The Module can currently create **single-stage** [Access Reviews](https://learn.microsoft.com/en-us/entra/id-governance/access-reviews-overview) only. Please also be aware that some Access Review features require a Microsoft Entra ID Governance or Microsoft Entra Suite license. See [License requirements](https://learn.microsoft.com/en-us/entra/id-governance/access-reviews-overview#license-requirements) for more details.
+
+Access reviews are based on MS Graph queries, which can be quite complex. We have therefore provided a set of [query templates](./templates/README.md) for standard use-cases.
+
+Here is an example of how to configure a one-time access review for group membership:
+
+```hcl
+access_reviews = {
+  example_review = {
+    display_name              = "Example Review U.S. Sales group"
+    description_for_reviewers = "Please review if membership in the 'U.S. Sales' group is still required."
+    description_for_admins    = "One-time self-review of U.S. Sales group membership."
+    scope = {
+      template = "users_assigned_to_group" # Using the template to check _any_ user assigned to a group
+      template_vars = {
+        group_id = "11111111-2222-3333-4444-555555555555" # specify the 'U.S. Sales' group object ID
+      }
+    }
+    instance_enumeration_scope = {
+      query = "/v1.0/groups/11111111-2222-3333-4444-555555555555" # scope the review to the 'U.S. Sales' group only
+    }
+    settings = {
+      default_decision_enabled = true
+      default_decision         = "Deny" # Remove users who did not complete the review from the group
+      recurrence = { # Make this a one-time review in January 2026
+        range = {
+          start_date = "2026-01-01"
+          end_date   = "2026-01-31"
+          type       = "endDate"
+        }
+      }
+    }
+    additional_notification_recipients = [{
+      notification_recipient_scope = {
+        query = "/v1.0/users/66666666-7777-8888-9999-000000000000" # Object ID of a specific user to receive notifications in case the target group does not have an owner
+      }
+    }]
+  }
+}
+```
 
 <!-- markdownlint-disable MD033 -->
 ## Requirements
@@ -107,12 +151,16 @@ Description: A map of access review definitions to configure for the Entra tenan
 - `display_name` - Name of access review series.
 - `description_for_reviewers` - Context of the review provided to reviewers in email notifications. Email notifications support up to 256 characters.
 - `description_for_admins` - Context of the review provided to admins. Defaults to contents of `description_for_reviewers`.
-- `scope` - Defines the entities whose access is reviewed. See https://learn.microsoft.com/en-us/graph/api/resources/accessreviewscope.
-  - `query` - The query representing what will be reviewed in an access review.
+- `scope` - Defines the entities whose access is reviewed. See https://learn.microsoft.com/en-us/graph/api/resources/accessreviewscope. Exactly one of `template` or `query` must be set.
+  - `template` - Optional name of a predefined scope template (file base name, without extension) from `templates/access_review_scopes/`. Use this for scope shapes that require more than a flat query, such as reviews of guests/service principals assigned to a role or of users assigned to an application. Mutually exclusive with `query`.
+  - `template_vars` - Map of string variables to interpolate into the template named in `template` (for example `group_id`, `role_id`, `inactive_duration`, `service_principal_id`). Defaults to `{}`; ignored for templates that take no variables.
+  - `query` - The query representing what will be reviewed in an access review. Required only when `template` is not set.
   - `query_type` - Indicates the type of query. Types include `MicrosoftGraph` and `ARM`. Defaults to `MicrosoftGraph`.
   - `query_root` - In the scenario where reviewers need to be specified dynamically, this property is used to indicate the relative source of the query. This property is only required if a relative query is specified. For example, `./manager`.
-- `instance_enumeration_scope` - In the case of an all groups review, this determines the scope of which groups will be reviewed. See https://learn.microsoft.com/en-us/graph/api/resources/accessreviewscope.
-  - `query` - The query representing what will be reviewed in an access review.
+- `instance_enumeration_scope` - In the case of an all groups review, this determines the scope of which groups will be reviewed. See https://learn.microsoft.com/en-us/graph/api/resources/accessreviewscope. Exactly one of `template` or `query` must be set.
+  - `template` - Optional name of a predefined scope template (file base name, without extension) from `templates/access_review_instance_enumeration_scopes/`. Mutually exclusive with `query`.
+  - `template_vars` - Map of string variables to interpolate into the template named in `template`. Defaults to `{}`; ignored for templates that take no variables.
+  - `query` - The query representing what will be reviewed in an access review. Required only when `template` is not set.
   - `query_type` - Indicates the type of query. Types include `MicrosoftGraph` and `ARM`. Defaults to `MicrosoftGraph`.
   - `query_root` - In the scenario where reviewers need to be specified dynamically, this property is used to indicate the relative source of the query. This property is only required if a relative query is specified. For example, `./manager`.
 - `settings` - The settings for an access review series. Recurrence is determined here..
@@ -151,8 +199,10 @@ Description: A map of access review definitions to configure for the Entra tenan
   - `query_type` - Indicates the type of query. Types include `MicrosoftGraph` and `ARM`. Defaults to `MicrosoftGraph`.
   - `query_root` - In the scenario where reviewers need to be specified dynamically, this property is used to indicate the relative source of the query. This property is only required if a relative query, for example, `./manager`, is specified. Possible value: `decisions`.
 - `additional_notification_recipients` - Defines the list of additional users or group members to be notified of the access review progress.
-  - `query` - Represents the query for who the recipients are. For example, `/groups/{group id}/members` for group members and `/users/{user id} for a specific user.
-  - `query\_root` - In the scenario where recipients need to be specified dynamically, this property is used to indicate the relative source of the query. This property is only required if a relative query, for example, `./manager`, is specified.
+  - `notification_template_type` - Indicates the type of access review email to be sent. Supported template type is `CompletedAdditionalRecipients`, which sends review completion notifications to the recipients. Defaults to `CompletedAdditionalRecipients`.
+  - `notificationRecipientScope` - Determines the recipient of the notification email.
+    - `query` - Represents the query for who the recipients are. For example, `/groups/{group id}/members` for group members and `/users/{user id} for a specific user.
+    - `query\_root` - In the scenario where recipients need to be specified dynamically, this property is used to indicate the relative source of the query. This property is only required if a relative query, for example, `./manager`, is specified.
 `
 
 Type:
@@ -163,14 +213,18 @@ map(object({
     description_for_reviewers = string
     description_for_admins    = optional(string)
     scope = object({
-      query      = string
-      query_type = optional(string, "MicrosoftGraph")
-      query_root = optional(string)
+      template      = optional(string)
+      template_vars = optional(map(string), {})
+      query         = optional(string)
+      query_type    = optional(string, "MicrosoftGraph")
+      query_root    = optional(string)
     })
     instance_enumeration_scope = optional(object({
-      query      = string
-      query_type = optional(string, "MicrosoftGraph")
-      query_root = optional(string)
+      template      = optional(string)
+      template_vars = optional(map(string), {})
+      query         = optional(string)
+      query_type    = optional(string, "MicrosoftGraph")
+      query_root    = optional(string)
     }))
     settings = object({
       mail_notifications_enabled         = optional(bool, false)

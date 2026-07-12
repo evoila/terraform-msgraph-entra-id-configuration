@@ -1,5 +1,5 @@
 {
   "@odata.type": "#microsoft.graph.accessReviewQueryScope",
-  "query": "/roleManagement/directory/roleDefinitions/${role_id}",
+  "query": "/v1.0/roleManagement/directory/roleDefinitions/${role_id}",
   "queryType": "MicrosoftGraph"
 }

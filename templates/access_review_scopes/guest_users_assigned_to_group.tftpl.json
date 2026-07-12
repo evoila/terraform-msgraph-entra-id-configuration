@@ -1,5 +1,5 @@
 {
   "@odata.type": "#microsoft.graph.accessReviewQueryScope",
-  "query": "/groups/${group_id}/transitiveMembers/?$filter=(userType eq 'Guest')",
+  "query": "/v1.0/groups/${group_id}/transitiveMembers/?$filter=(userType eq 'Guest')",
   "queryType": "MicrosoftGraph"
 }

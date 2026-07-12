@@ -1,5 +1,5 @@
 {
   "@odata.type": "#microsoft.graph.accessReviewQueryScope",
-  "query": "/groups/${group_id}/transitiveMembers",
+  "query": "/v1.0/groups/${group_id}/transitiveMembers/microsoft.graph.user",
   "queryType": "MicrosoftGraph"
 }

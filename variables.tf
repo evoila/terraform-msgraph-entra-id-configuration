@@ -237,14 +237,18 @@ variable "access_reviews" {
     description_for_reviewers = string
     description_for_admins    = optional(string)
     scope = object({
-      query      = string
-      query_type = optional(string, "MicrosoftGraph")
-      query_root = optional(string)
+      template      = optional(string)
+      template_vars = optional(map(string), {})
+      query         = optional(string)
+      query_type    = optional(string, "MicrosoftGraph")
+      query_root    = optional(string)
     })
     instance_enumeration_scope = optional(object({
-      query      = string
-      query_type = optional(string, "MicrosoftGraph")
-      query_root = optional(string)
+      template      = optional(string)
+      template_vars = optional(map(string), {})
+      query         = optional(string)
+      query_type    = optional(string, "MicrosoftGraph")
+      query_root    = optional(string)
     }))
     settings = object({
       mail_notifications_enabled         = optional(bool, false)
@@ -303,12 +307,16 @@ variable "access_reviews" {
   - `display_name` - Name of access review series.
   - `description_for_reviewers` - Context of the review provided to reviewers in email notifications. Email notifications support up to 256 characters.
   - `description_for_admins` - Context of the review provided to admins. Defaults to contents of `description_for_reviewers`.
-  - `scope` - Defines the entities whose access is reviewed. See https://learn.microsoft.com/en-us/graph/api/resources/accessreviewscope.
-    - `query` - The query representing what will be reviewed in an access review.
+  - `scope` - Defines the entities whose access is reviewed. See https://learn.microsoft.com/en-us/graph/api/resources/accessreviewscope. Exactly one of `template` or `query` must be set.
+    - `template` - Optional name of a predefined scope template (file base name, without extension) from `templates/access_review_scopes/`. Use this for scope shapes that require more than a flat query, such as reviews of guests/service principals assigned to a role or of users assigned to an application. Mutually exclusive with `query`.
+    - `template_vars` - Map of string variables to interpolate into the template named in `template` (for example `group_id`, `role_id`, `inactive_duration`, `service_principal_id`). Defaults to `{}`; ignored for templates that take no variables.
+    - `query` - The query representing what will be reviewed in an access review. Required only when `template` is not set.
     - `query_type` - Indicates the type of query. Types include `MicrosoftGraph` and `ARM`. Defaults to `MicrosoftGraph`.
     - `query_root` - In the scenario where reviewers need to be specified dynamically, this property is used to indicate the relative source of the query. This property is only required if a relative query is specified. For example, `./manager`.
-  - `instance_enumeration_scope` - In the case of an all groups review, this determines the scope of which groups will be reviewed. See https://learn.microsoft.com/en-us/graph/api/resources/accessreviewscope.
-    - `query` - The query representing what will be reviewed in an access review.
+  - `instance_enumeration_scope` - In the case of an all groups review, this determines the scope of which groups will be reviewed. See https://learn.microsoft.com/en-us/graph/api/resources/accessreviewscope. Exactly one of `template` or `query` must be set.
+    - `template` - Optional name of a predefined scope template (file base name, without extension) from `templates/access_review_instance_enumeration_scopes/`. Mutually exclusive with `query`.
+    - `template_vars` - Map of string variables to interpolate into the template named in `template`. Defaults to `{}`; ignored for templates that take no variables.
+    - `query` - The query representing what will be reviewed in an access review. Required only when `template` is not set.
     - `query_type` - Indicates the type of query. Types include `MicrosoftGraph` and `ARM`. Defaults to `MicrosoftGraph`.
     - `query_root` - In the scenario where reviewers need to be specified dynamically, this property is used to indicate the relative source of the query. This property is only required if a relative query is specified. For example, `./manager`.
   - `settings` - The settings for an access review series. Recurrence is determined here..
@@ -347,7 +355,76 @@ variable "access_reviews" {
     - `query_type` - Indicates the type of query. Types include `MicrosoftGraph` and `ARM`. Defaults to `MicrosoftGraph`.
     - `query_root` - In the scenario where reviewers need to be specified dynamically, this property is used to indicate the relative source of the query. This property is only required if a relative query, for example, `./manager`, is specified. Possible value: `decisions`.
   - `additional_notification_recipients` - Defines the list of additional users or group members to be notified of the access review progress.
-    - `query` - Represents the query for who the recipients are. For example, `/groups/{group id}/members` for group members and `/users/{user id} for a specific user.
-    - `query_root` - In the scenario where recipients need to be specified dynamically, this property is used to indicate the relative source of the query. This property is only required if a relative query, for example, `./manager`, is specified.
+    - `notification_template_type` - Indicates the type of access review email to be sent. Supported template type is `CompletedAdditionalRecipients`, which sends review completion notifications to the recipients. Defaults to `CompletedAdditionalRecipients`.
+    - `notificationRecipientScope` - Determines the recipient of the notification email.
+      - `query` - Represents the query for who the recipients are. For example, `/groups/{group id}/members` for group members and `/users/{user id} for a specific user.
+      - `query_root` - In the scenario where recipients need to be specified dynamically, this property is used to indicate the relative source of the query. This property is only required if a relative query, for example, `./manager`, is specified.
   DESCRIPTION
+
+  validation {
+    condition = alltrue([
+      for k, v in var.access_reviews : (v.scope.template != null) != (v.scope.query != null)
+    ])
+    error_message = "Each access_reviews[*].scope must set exactly one of `template` or `query`."
+  }
+
+  validation {
+    condition = alltrue([
+      for k, v in var.access_reviews : v.instance_enumeration_scope == null ? true : (
+        (v.instance_enumeration_scope.template != null) != (v.instance_enumeration_scope.query != null)
+      )
+    ])
+    error_message = "Each access_reviews[*].instance_enumeration_scope, if set, must set exactly one of `template` or `query`."
+  }
+
+  validation {
+    condition = alltrue([
+      for k, v in var.access_reviews : v.scope.template == null ? true : contains(
+        fileset(path.module, "templates/access_review_scopes/*.tftpl.json"),
+        "templates/access_review_scopes/${v.scope.template}.tftpl.json"
+      )
+    ])
+    error_message = "Each access_reviews[*].scope.template must match an existing file name (without extension) in templates/access_review_scopes/."
+  }
+
+  validation {
+    condition = alltrue([
+      for k, v in var.access_reviews : (v.instance_enumeration_scope == null || v.instance_enumeration_scope.template == null) ? true : contains(
+        fileset(path.module, "templates/access_review_instance_enumeration_scopes/*.tftpl.json"),
+        "templates/access_review_instance_enumeration_scopes/${v.instance_enumeration_scope.template}.tftpl.json"
+      )
+    ])
+    error_message = "Each access_reviews[*].instance_enumeration_scope.template must match an existing file name (without extension) in templates/access_review_instance_enumeration_scopes/."
+  }
+
+  validation {
+    condition = alltrue([
+      for k, v in var.access_reviews : v.settings.recurrence.pattern == null ? true : contains(
+        ["daily", "weekly", "absoluteMonthly", "relativeMonthly", "absoluteYearly", "relativeYearly"],
+        v.settings.recurrence.pattern.type
+      )
+    ])
+    error_message = "Each access_reviews[*].settings.recurrence.pattern.type must be one of: daily, weekly, absoluteMonthly, relativeMonthly, absoluteYearly, relativeYearly."
+  }
+
+  validation {
+    condition = alltrue([
+      for k, v in var.access_reviews : contains(["endDate", "noEnd", "numbered"], v.settings.recurrence.range.type)
+    ])
+    error_message = "Each access_reviews[*].settings.recurrence.range.type must be one of: endDate, noEnd, numbered."
+  }
+
+  validation {
+    condition = alltrue([
+      for k, v in var.access_reviews : contains(["Approve", "Deny", "Recommendation"], v.settings.default_decision)
+    ])
+    error_message = "Each access_reviews[*].settings.default_decision must be one of: Approve, Deny, Recommendation."
+  }
+
+  validation {
+    condition = alltrue([
+      for k, v in var.access_reviews : contains(["removeAccessApplyAction", "disableAndDeleteUserApplyAction"], v.settings.apply_actions)
+    ])
+    error_message = "Each access_reviews[*].settings.apply_actions must be one of: removeAccessApplyAction, disableAndDeleteUserApplyAction."
+  }
 }

@@ -3,14 +3,14 @@
   "principalScopes": [
     {
       "@odata.type": "#microsoft.graph.accessReviewQueryScope",
-      "query": "/users?$filter=(userType eq 'Guest')",
+      "query": "/v1.0/users?$filter=(userType eq 'Guest')",
       "queryType": "MicrosoftGraph"
     }
   ],
   "resourceScopes": [
     {
       "@odata.type": "#microsoft.graph.accessReviewQueryScope",
-      "query": "/roleManagement/directory/roleDefinitions/${role_id}",
+      "query": "/v1.0/roleManagement/directory/roleDefinitions/${role_id}",
       "queryType": "MicrosoftGraph"
     }
   ]

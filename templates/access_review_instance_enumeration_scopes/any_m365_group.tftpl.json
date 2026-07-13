@@ -1,0 +1,4 @@
+{
+  "query": "/v1.0/groups?$filter=(groupTypes/any(c:c eq 'Unified'))",
+  "queryType": "MicrosoftGraph"
+}

@@ -21,7 +21,8 @@ This Terraform module is designed to simplify Entra ID tenant configuration, inc
   - 🔲 [Verifiable credentials](https://learn.microsoft.com/en-us/graph/api/resources/verifiablecredentialsauthenticationmethodconfiguration)
   - 🔲 [Voice](https://learn.microsoft.com/en-us/graph/api/resources/voiceauthenticationmethodconfiguration)
   - 🔲 [X509 certificate](https://learn.microsoft.com/en-us/graph/api/resources/voiceauthenticationmethodconfiguration)
-- ✅ Configure [custom domains](https://learn.microsoft.com/en-us/graph/api/resources/domain)
+- ✅ Configure [custom domains](https://learn.microsoft.com/en-us/graph/api/resources/domain).
+- 🟦 Configure [access reviews](https://learn.microsoft.com/en-us/graph/api/resources/accessreviewsv2-overview). See below for current limitations.
 
 > **NOTICE**
 >
@@ -34,6 +35,49 @@ This Terraform module is designed to simplify Entra ID tenant configuration, inc
 This module is under development and currently considered a [minimum viable product](https://en.wikipedia.org/wiki/Minimum_viable_product) (MVP). Please create an issue in the [module GitHub repository](https://github.com/evoila/terraform-msgraph-entra-id-configuration/issues) if you have feature requests.
 
 > **IMPORTANT** Microsoft Graph uses an _eventual consistency_ model. This means, changes are not immediately visible after a write. See [designing for eventual consistency for Microsoft Entra](https://devblogs.microsoft.com/identity/designing-for-eventual-consistency-for-microsoft-entra/) for more details.
+
+## Configuring Access Reviews
+
+The Module can currently create **single-stage** [Access Reviews](https://learn.microsoft.com/en-us/entra/id-governance/access-reviews-overview) only. Please also be aware that some Access Review features require a Microsoft Entra ID Governance or Microsoft Entra Suite license. See [License requirements](https://learn.microsoft.com/en-us/entra/id-governance/access-reviews-overview#license-requirements) for more details.
+
+Access reviews are based on MS Graph queries, which can be quite complex. We have therefore provided a set of [query templates](./templates/README.md) for standard use-cases.
+
+Here is an example of how to configure a one-time access review for group membership:
+
+```hcl
+access_reviews = {
+  example_review = {
+    display_name              = "Example Review U.S. Sales group"
+    description_for_reviewers = "Please review if membership in the 'U.S. Sales' group is still required."
+    description_for_admins    = "One-time self-review of U.S. Sales group membership."
+    scope = {
+      template = "users_assigned_to_group" # Using the template to check _any_ user assigned to a group
+      template_vars = {
+        group_id = "11111111-2222-3333-4444-555555555555" # specify the 'U.S. Sales' group object ID
+      }
+    }
+    instance_enumeration_scope = {
+      query = "/v1.0/groups/11111111-2222-3333-4444-555555555555" # scope the review to the 'U.S. Sales' group only
+    }
+    settings = {
+      default_decision_enabled = true
+      default_decision         = "Deny" # Remove users who did not complete the review from the group
+      recurrence = { # Make this a one-time review in January 2026
+        range = {
+          start_date = "2026-01-01"
+          end_date   = "2026-01-31"
+          type       = "endDate"
+        }
+      }
+    }
+    additional_notification_recipients = [{
+      notification_recipient_scope = {
+        query = "/v1.0/users/66666666-7777-8888-9999-000000000000" # Object ID of a specific user to receive notifications in case the target group does not have an owner
+      }
+    }]
+  }
+}
+```
 
 <!-- markdownlint-disable MD033 -->
 ## Requirements
@@ -48,6 +92,7 @@ The following requirements are needed by this module:
 
 The following resources are used by this module:
 
+- [msgraph_resource.access_review_definition](https://registry.terraform.io/providers/microsoft/msgraph/latest/docs/resources/resource) (resource)
 - [msgraph_resource.domains](https://registry.terraform.io/providers/microsoft/msgraph/latest/docs/resources/resource) (resource)
 - [msgraph_resource_action.domain_verify](https://registry.terraform.io/providers/microsoft/msgraph/latest/docs/resources/resource_action) (resource)
 - [msgraph_update_resource.domain_password_policy](https://registry.terraform.io/providers/microsoft/msgraph/latest/docs/resources/update_resource) (resource)
@@ -99,6 +144,142 @@ Type: `string`
 ## Optional Inputs
 
 The following input variables are optional (have default values):
+
+### <a name="input_access_reviews"></a> [access\_reviews](#input\_access\_reviews)
+
+Description: A map of access review definitions to configure for the Entra tenant. Defaults to `{}` (no access reviews). The map key is arbitrary; the value supports the following attributes:
+- `display_name` - Name of access review series.
+- `description_for_reviewers` - Context of the review provided to reviewers in email notifications. Email notifications support up to 256 characters.
+- `description_for_admins` - Context of the review provided to admins. Defaults to contents of `description_for_reviewers`.
+- `scope` - Defines the entities whose access is reviewed. See https://learn.microsoft.com/en-us/graph/api/resources/accessreviewscope. Exactly one of `template` or `query` must be set.
+  - `template` - Optional name of a predefined scope template (file base name, without extension) from `templates/access_review_scopes/`. Use this for scope shapes that require more than a flat query, such as reviews of guests/service principals assigned to a role or of users assigned to an application. Mutually exclusive with `query`.
+  - `template_vars` - Map of string variables to interpolate into the template named in `template` (for example `group_id`, `role_id`, `inactive_duration`, `service_principal_id`). Defaults to `{}`; ignored for templates that take no variables.
+  - `query` - The query representing what will be reviewed in an access review. Required only when `template` is not set.
+  - `query_type` - Indicates the type of query. Types include `MicrosoftGraph` and `ARM`. Defaults to `MicrosoftGraph`.
+  - `query_root` - In the scenario where reviewers need to be specified dynamically, this property is used to indicate the relative source of the query. This property is only required if a relative query is specified. For example, `./manager`.
+- `instance_enumeration_scope` - In the case of an all groups review, this determines the scope of which groups will be reviewed. See https://learn.microsoft.com/en-us/graph/api/resources/accessreviewscope. Exactly one of `template` or `query` must be set.
+  - `template` - Optional name of a predefined scope template (file base name, without extension) from `templates/access_review_instance_enumeration_scopes/`. Mutually exclusive with `query`.
+  - `template_vars` - Map of string variables to interpolate into the template named in `template`. Defaults to `{}`; ignored for templates that take no variables.
+  - `query` - The query representing what will be reviewed in an access review. Required only when `template` is not set.
+  - `query_type` - Indicates the type of query. Types include `MicrosoftGraph` and `ARM`. Defaults to `MicrosoftGraph`.
+  - `query_root` - In the scenario where reviewers need to be specified dynamically, this property is used to indicate the relative source of the query. This property is only required if a relative query is specified. For example, `./manager`.
+- `settings` - The settings for an access review series. Recurrence is determined here..
+  - `mail_notifications_enabled` - Indicates whether emails are enabled or disabled. Defaults to `false`.
+  - `reminder_notifications_enabled` - .
+  - `justification_required_on_approval` - Indicates whether reviewers are required to provide justification with their decision. Defaults to `false`.
+  - `instance_duration_in_days` - Duration of an access review instance in days. Defaults to `30`.
+  - `auto_apply_decisions_enabled` - Indicates whether decisions are automatically applied. When set to `false`, an admin must apply the decisions manually once the reviewer completes the access review. When set to `true`, decisions are applied automatically after the access review instance duration ends, whether or not the reviewers have responded. Defaults to `false`.
+  - `apply_actions` - Describes the actions to take once a review is complete. There are two types that are currently supported: `removeAccessApplyAction` (default) and `disableAndDeleteUserApplyAction`.
+  - `recurrence` - Detailed settings for recurrence using the standard Outlook recurrence object. See https://learn.microsoft.com/en-us/graph/api/resources/patternedrecurrence for details.
+    - `pattern` - The frequency of an event. Do not specify this property for a one-time access review.
+      - `type` - The recurrence pattern type: daily, weekly, absoluteMonthly, relativeMonthly, absoluteYearly, relativeYearly.
+      - `interval` - The number of units between occurrences, where units can be in days, weeks, months, or years, depending on the type.
+      - `month` - The month in which the event occurs. This is a number from 1 to 12.
+      - `day_of_month` - The day of the month on which the event occurs. Required if type is absoluteMonthly or absoluteYearly.
+      - `days_of_week` - A collection of the days of the week on which the event occurs. The possible values are: sunday, monday, tuesday, wednesday, thursday, friday, saturday.
+      - `first_day_of_week` - The first day of the week. The possible values are: sunday, monday, tuesday, wednesday, thursday, friday, saturday. Defaults to `sunday`.
+      - `index` - Specifies on which instance of the allowed days specified in daysOfWeek the event occurs, counted from the first instance in the month. The possible values are: first, second, third, fourth, last. Defaults to `first`.
+    - `range` - The duration of the access review.
+      - `start_date` - The date to start applying the recurrence pattern. The first occurrence of the meeting may be this date or later, depending on the recurrence pattern of the access review.
+      - `end_date` - The date to stop applying the recurrence pattern. Defaults to `9999-12-31` (no end date).
+      - `type` - The recurrence range. The possible values are: `endDate`, `noEnd`, `numbered`. Defaults to `numbered`.
+      - `number_of_occurrences` - The number of times to repeat the event. Required and must be positive if type is `numbered`.
+      - `recurrence_time_zone` - Time zone for the startDate and endDate properties. Defaults to `null`.
+  - `default_decision_enabled` - Indicates whether the default decision is enabled or disabled when reviewers do not respond. Defaults to `false`.
+  - `default_decision` - Decision chosen if defaultDecisionEnabled is enabled. Can be one of `Approve`, `Deny`, or `Recommendation`. Defaults to `Recommendation`.
+  - `decision_histories_for_reviewers_enabled` - Indicates whether decisions on previous access review stages are available for reviewers on an accessReviewInstance with multiple subsequent stages. Defaults to `false`.
+  - `recommendations_enabled` - Indicates whether decision recommendations are enabled or disabled. Defaults to `true`.
+  - `recommendation_look_back_duration` - .
+- `reviewers` - Defines who the reviewers are. Reviewers can be specified as a static list of users (that is, specific users, group owners, and group members) or dynamically in which every user is reviewed by their manager, group or application owners. If none are specified, the review is a self-review (users review their own access). See https://learn.microsoft.com/en-us/graph/api/resources/accessreviewreviewerscope for more details.
+  - `query` - The query specifying who will be the reviewer.
+  - `query_type` - Indicates the type of query. Types include `MicrosoftGraph` and `ARM`. Defaults to `MicrosoftGraph`.
+  - `query_root` - In the scenario where reviewers need to be specified dynamically, this property is used to indicate the relative source of the query. This property is only required if a relative query, for example, `./manager`, is specified. Possible value: `decisions`.
+- `fallback_reviewers` - If provided, the fallback reviewers are asked to complete a review if the primary reviewers do not exist. For example, if managers are selected as reviewers and a principal under review does not have a manager in Microsoft Entra ID, the fallback reviewers are asked to review that principal.
+  - `query` - The query specifying who will be the reviewer.
+  - `query_type` - Indicates the type of query. Types include `MicrosoftGraph` and `ARM`. Defaults to `MicrosoftGraph`.
+  - `query_root` - In the scenario where reviewers need to be specified dynamically, this property is used to indicate the relative source of the query. This property is only required if a relative query, for example, `./manager`, is specified. Possible value: `decisions`.
+- `additional_notification_recipients` - Defines the list of additional users or group members to be notified of the access review progress.
+  - `notification_template_type` - Indicates the type of access review email to be sent. Supported template type is `CompletedAdditionalRecipients`, which sends review completion notifications to the recipients. Defaults to `CompletedAdditionalRecipients`.
+  - `notificationRecipientScope` - Determines the recipient of the notification email.
+    - `query` - Represents the query for who the recipients are. For example, `/groups/{group id}/members` for group members and `/users/{user id} for a specific user.
+    - `query\_root` - In the scenario where recipients need to be specified dynamically, this property is used to indicate the relative source of the query. This property is only required if a relative query, for example, `./manager`, is specified.
+`
+
+Type:
+
+```hcl
+map(object({
+    display_name              = string
+    description_for_reviewers = string
+    description_for_admins    = optional(string)
+    scope = object({
+      template      = optional(string)
+      template_vars = optional(map(string), {})
+      query         = optional(string)
+      query_type    = optional(string, "MicrosoftGraph")
+      query_root    = optional(string)
+    })
+    instance_enumeration_scope = optional(object({
+      template      = optional(string)
+      template_vars = optional(map(string), {})
+      query         = optional(string)
+      query_type    = optional(string, "MicrosoftGraph")
+      query_root    = optional(string)
+    }))
+    settings = object({
+      mail_notifications_enabled         = optional(bool, false)
+      reminder_notifications_enabled     = optional(bool, false)
+      justification_required_on_approval = optional(bool, false)
+      instance_duration_in_days          = optional(number, 30)
+      auto_apply_decisions_enabled       = optional(bool, false)
+      apply_actions                      = optional(string, "removeAccessApplyAction")
+      recurrence = object({
+        pattern = optional(object({
+          type              = optional(string, "absoluteMonthly")
+          interval          = optional(number, 12)
+          month             = optional(number, 0)
+          day_of_month      = optional(number, 0)
+          days_of_week      = optional(list(string), [])
+          first_day_of_week = optional(string, "sunday")
+          index             = optional(string, "first")
+        }))
+        range = object({
+          start_date            = string
+          end_date              = optional(string, "9999-12-31")
+          type                  = optional(string, "numbered")
+          number_of_occurrences = optional(number, 0)
+          recurrence_time_zone  = optional(string, null)
+        })
+      })
+
+      default_decision_enabled                 = optional(bool, false)
+      default_decision                         = optional(string, "Recommendation")
+      decision_histories_for_reviewers_enabled = optional(bool, false)
+
+      recommendations_enabled           = optional(bool, true)
+      recommendation_look_back_duration = optional(string)
+    })
+    reviewers = optional(list(object({
+      query      = string
+      query_type = optional(string, "MicrosoftGraph")
+      query_root = optional(string)
+    })), [])
+    fallback_reviewers = optional(list(object({
+      query      = string
+      query_type = optional(string, "MicrosoftGraph")
+      query_root = optional(string)
+    })), [])
+    additional_notification_recipients = optional(list(object({
+      notification_template_type = optional(string, "CompletedAdditionalRecipients")
+      notification_recipient_scope = object({
+        query      = string
+        query_root = optional(string)
+      })
+    })), [])
+  }))
+```
+
+Default: `{}`
 
 ### <a name="input_allow_invites_from"></a> [allow\_invites\_from](#input\_allow\_invites\_from)
 

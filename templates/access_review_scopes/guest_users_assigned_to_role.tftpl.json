@@ -1,0 +1,17 @@
+{
+  "@odata.type": "#microsoft.graph.principalResourceMembershipsScope",
+  "principalScopes": [
+    {
+      "@odata.type": "#microsoft.graph.accessReviewQueryScope",
+      "query": "/v1.0/users?$filter=(userType eq 'Guest')",
+      "queryType": "MicrosoftGraph"
+    }
+  ],
+  "resourceScopes": [
+    {
+      "@odata.type": "#microsoft.graph.accessReviewQueryScope",
+      "query": "/v1.0/roleManagement/directory/roleDefinitions/${role_id}",
+      "queryType": "MicrosoftGraph"
+    }
+  ]
+}

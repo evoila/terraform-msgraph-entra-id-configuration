@@ -67,3 +67,30 @@ run "test_target_groups" {
     error_message = "Should have the required number of excluded groups"
   }
 }
+
+# Test case: with no explicit configuration, email OTP should default to disabled
+# with external ID usage left at "default" and no target groups.
+run "test_state_disabled_by_default" {
+  command = apply
+
+  variables {
+    authentication_methods_policy_configuration = {
+      email = {}
+    }
+  }
+
+  assert {
+    condition     = msgraph_update_resource.entra_authentication_method_policy_email_update.body.state == "disabled"
+    error_message = "Email auth method state should default to disabled"
+  }
+
+  assert {
+    condition     = msgraph_update_resource.entra_authentication_method_policy_email_update.body.allowExternalIdToUseEmailOtp == "default"
+    error_message = "Allow External ID OTP should default to 'default'"
+  }
+
+  assert {
+    condition     = length(msgraph_update_resource.entra_authentication_method_policy_email_update.body.includeTargets) == 0
+    error_message = "Should have no included groups by default"
+  }
+}

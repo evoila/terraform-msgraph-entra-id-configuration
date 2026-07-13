@@ -41,7 +41,10 @@ variable "organization_configuration" {
   validation {
     condition = (
       var.organization_configuration.privacy_statement_url == null ||
-      (can(regex("^https?://", var.organization_configuration.privacy_statement_url)) && length(var.organization_configuration.privacy_statement_url) <= 255)
+      try(
+        can(regex("^https?://", var.organization_configuration.privacy_statement_url)) && length(var.organization_configuration.privacy_statement_url) <= 255,
+        false
+      )
     )
     error_message = "organization_configuration.privacy_statement_url must start with http:// or https:// and be at most 255 characters."
   }

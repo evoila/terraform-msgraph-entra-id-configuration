@@ -33,14 +33,14 @@ resource "msgraph_update_resource" "entra_authorization_policy_update" {
     allowInvitesFrom                          = var.allow_invites_from
     allowedToUseSSPR                          = var.allowed_to_use_sspr
     allowEmailVerifiedUsersToJoinOrganization = false # Limited to recommended scenario ONLY. See https://learn.microsoft.com/en-us/azure/active-directory/external-identities/allow-email-verified-users-to-join
+    allowUserConsentForRiskyApps              = var.allow_user_consent_for_risky_apps
+    allowedToSignUpEmailVerifiedUsers         = var.allowed_to_sign_up_email_based_subscriptions
+    blockMsolPowerShell                       = var.block_msol_powershell
     guestUserRoleId                           = local.guest_user_role_id[var.guest_user_role]
     defaultUserRolePermissions = {
       allowedToCreateApps           = var.allowed_to_create_apps
       allowedToCreateTenants        = var.allowed_to_create_tenants
       allowedToCreateSecurityGroups = var.allowed_to_create_security_groups
-      #allowUserConsentForRiskyApps      = var.allow_user_consent_for_risky_apps
-      #allowedToSignUpEmailVerifiedUsers = var.allowed_to_sign_up_email_based_subscriptions
-      #blockMsolPowerShell               = var.block_msol_powershell
 
       # Configure how users consent to applications
       # see https://learn.microsoft.com/en-us/entra/identity/enterprise-apps/configure-user-consent

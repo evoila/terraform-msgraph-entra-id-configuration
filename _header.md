@@ -5,7 +5,7 @@ This Terraform module is designed to simplify Entra ID tenant configuration, inc
 ## Features
 
 - ✅ Configure basic [organization settings](https://learn.microsoft.com/en-us/graph/api/resources/organization).
-- 🟦 Configure the [authorization policy](https://learn.microsoft.com/en-us/graph/api/resources/authorizationpolicy).
+- ✅ Configure the [authorization policy](https://learn.microsoft.com/en-us/graph/api/resources/authorizationpolicy).
 - ✅ Enable or disable [security defaults](https://learn.microsoft.com/en-us/entra/fundamentals/security-defaults).
 - Configure [authentication methods policies](https://learn.microsoft.com/en-us/graph/api/resources/authenticationmethodspolicies-overview):
   - ✅ [Email](https://learn.microsoft.com/en-us/graph/api/resources/emailauthenticationmethodconfiguration)
@@ -33,6 +33,26 @@ This Terraform module is designed to simplify Entra ID tenant configuration, inc
 This module is under development and currently considered a [minimum viable product](https://en.wikipedia.org/wiki/Minimum_viable_product) (MVP). Please create an issue in the [module GitHub repository](https://github.com/evoila/terraform-msgraph-entra-id-configuration/issues) if you have feature requests.
 
 > **IMPORTANT** Microsoft Graph uses an _eventual consistency_ model. This means, changes are not immediately visible after a write. See [designing for eventual consistency for Microsoft Entra](https://devblogs.microsoft.com/identity/designing-for-eventual-consistency-for-microsoft-entra/) for more details.
+
+## Configuring the Authorization Policy
+
+The [authorization policy](https://learn.microsoft.com/en-us/graph/api/resources/authorizationpolicy) controls
+tenant-wide authorization settings such as external invitations, self-service password reset, the default guest
+user role, and what regular users are allowed to do (create apps, tenants, security groups, or consent to
+application permissions).
+
+Here's an example of how to configure basic authorization policy properties:
+
+```hcl
+allow_invites_from                = "adminsAndGuestInviters" # Restrict who can invite external guests
+allowed_to_use_sspr               = true                     # Allow users to reset their own password
+guest_user_role                   = "restrictedGuestUser"    # Limit guest visibility into the directory
+allowed_to_create_apps            = false                    # Prevent users from registering applications
+allowed_to_create_tenants         = false                    # Prevent users from creating new tenants
+allowed_to_create_security_groups = false                    # Prevent users from creating security groups
+allow_user_apps_consent           = false                    # Require admin consent for application permissions
+block_msol_powershell             = true                     # Block access to the deprecated MSOnline PowerShell module
+```
 
 ## Configuring Access Reviews
 

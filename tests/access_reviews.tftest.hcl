@@ -50,7 +50,22 @@ variables {
 }
 
 mock_provider "msgraph" {
+  # Access Reviews are an Entra ID P2 feature, so we must inject the service
+  # plan (license) into the data source to enable testing
+  override_data {
+    target = data.msgraph_resource.subscribed_skus
+    values = {
+      output = {
+        service_plans = [
+          [
+            { servicePlanId = "eec0eb4f-6444-4f95-aba0-50c24d67f998" },
+          ],
+        ]
+      }
+    }
+  }
   mock_resource "msgraph_resource" {
+
     defaults = {
       url           = "identityGovernance/accessReviews/definitions"
       update_method = "PUT"

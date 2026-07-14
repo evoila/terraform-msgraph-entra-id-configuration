@@ -117,6 +117,39 @@ run "test_domains_password_policy" {
   }
 }
 
+# Test case: Microsoft Graph rejects password policy updates on unverified domains
+# ("Updates to unverified domains are not allowed."), so the module must not attempt
+# the update until the domain is verified.
+run "test_domains_password_policy_skipped_for_unverified_domain" {
+  command = apply
+
+  override_data {
+    target = data.msgraph_resource.domains
+    values = {
+      output = {
+        all = {
+          value = [
+            {
+              id                               = "contoso.invalid"
+              isDefault                        = false
+              isInitial                        = false
+              isVerified                       = false
+              passwordNotificationWindowInDays = 14
+              passwordValidityPeriodInDays     = 2147483647
+              supportedServices                = ["Email", "OfficeCommunicationsOnline"]
+            },
+          ]
+        }
+      }
+    }
+  }
+
+  assert {
+    condition     = !contains(keys(msgraph_update_resource.domain_password_policy), "contoso")
+    error_message = "The password policy update must not be attempted for '${var.domains["contoso"].name}' while it is unverified."
+  }
+}
+
 # Test case: multiple domains with mixed verification/trigger states, and the module's
 # derived outputs (default_domain, domains_detail) which read from the real tenant state
 # rather than from the requested configuration.

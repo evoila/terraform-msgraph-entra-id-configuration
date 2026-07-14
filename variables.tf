@@ -392,7 +392,7 @@ variable "access_reviews" {
 
   validation {
     condition = alltrue([
-      for k, v in var.access_reviews : (v.instance_enumeration_scope == null || v.instance_enumeration_scope.template == null) ? true : contains(
+      for k, v in var.access_reviews : (v.instance_enumeration_scope == null || try(v.instance_enumeration_scope.template, null) == null) ? true : contains(
         fileset(path.module, "templates/access_review_instance_enumeration_scopes/*.tftpl.json"),
         "templates/access_review_instance_enumeration_scopes/${v.instance_enumeration_scope.template}.tftpl.json"
       )

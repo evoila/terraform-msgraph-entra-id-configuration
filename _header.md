@@ -5,6 +5,7 @@ This Terraform module is designed to simplify Entra ID tenant configuration, inc
 ## Features
 
 - ✅ Configure basic [organization settings](https://learn.microsoft.com/en-us/graph/api/resources/organization).
+- 🟦 Configure [groups](https://learn.microsoft.com/en-us/graph/api/resources/group) (security and Microsoft 365 groups, including dynamic membership) and their owners/members. See below for current limitations.
 - ✅ Configure the [authorization policy](https://learn.microsoft.com/en-us/graph/api/resources/authorizationpolicy).
 - ✅ Enable or disable [security defaults](https://learn.microsoft.com/en-us/entra/fundamentals/security-defaults).
 - Configure [authentication methods policies](https://learn.microsoft.com/en-us/graph/api/resources/authenticationmethodspolicies-overview):
@@ -33,6 +34,66 @@ This Terraform module is designed to simplify Entra ID tenant configuration, inc
 This module is under development and currently considered a [minimum viable product](https://en.wikipedia.org/wiki/Minimum_viable_product) (MVP). Please create an issue in the [module GitHub repository](https://github.com/evoila/terraform-msgraph-entra-id-configuration/issues) if you have feature requests.
 
 > **IMPORTANT** Microsoft Graph uses an _eventual consistency_ model. This means, changes are not immediately visible after a write. See [designing for eventual consistency for Microsoft Entra](https://devblogs.microsoft.com/identity/designing-for-eventual-consistency-for-microsoft-entra/) for more details.
+
+## Configuring Groups
+
+The module can create and manage [security groups and Microsoft 365 groups](https://learn.microsoft.com/en-us/graph/api/resources/group), including [dynamic membership groups](https://learn.microsoft.com/en-us/entra/identity/users/groups-dynamic-membership) via `membership_rule` (requires an Entra ID P1 or higher license). Group owners and members are referenced by their existing Entra ID object ID (GUID) - creating or managing the underlying users is out of scope for this module.
+
+> **NOTE**
+>
+> - Group membership (`owners`/`members`) is fully reconciled on every `terraform apply`: object IDs removed from the list are removed from the group in Entra ID, and any added are added. If members are also managed by another process (for example manually, or via a dynamic membership rule), do not list them here to avoid Terraform reverting out-of-band changes.
+> - Since owners are attached after group creation rather than at creation time, there is a brief window where a newly created group has no owner ("anonymously owned" in Microsoft Graph terms). Configure at least one owner for any group that needs to be manageable afterwards.
+
+Here is an example of a security group and a dynamic Microsoft 365 group:
+
+```hcl
+groups = {
+  engineering = {
+    display_name  = "Engineering"
+    mail_nickname = "engineering"
+    group_types   = [] # plain security group
+    owners        = ["11111111-2222-3333-4444-555555555555"]
+    members = [
+      "66666666-7777-8888-9999-000000000000",
+      "77777777-8888-9999-0000-111111111111",
+    ]
+  }
+  all_sales = {
+    display_name    = "All Sales (dynamic)"
+    mail_nickname   = "all-sales"
+    mail_enabled    = true
+    group_types     = ["Unified", "DynamicMembership"]
+    visibility      = "Private"
+    membership_rule = "(user.department -eq \"Sales\")"
+  }
+}
+```
+
+The group's Entra ID object ID is exposed via the `group_ids` output and can be referenced from other resources configured by this module, for example to scope an [access review](#configuring-access-reviews) to the `engineering` group:
+
+```hcl
+access_reviews = {
+  engineering_review = {
+    # ...
+    scope = {
+      template = "users_assigned_to_group"
+      template_vars = {
+        group_id = module.entra.group_ids["engineering"]
+      }
+    }
+  }
+}
+```
+
+or to scope an authentication method policy (for example FIDO2) to a managed group:
+
+```hcl
+authentication_methods_policy_configuration = {
+  fido2 = {
+    included_groups = [module.entra.group_ids["engineering"]]
+  }
+}
+```
 
 ## Configuring the Authorization Policy
 

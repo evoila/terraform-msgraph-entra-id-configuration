@@ -508,7 +508,7 @@ variable "groups" {
 
   validation {
     condition = alltrue([
-      for k, v in var.groups : v.visibility == null || contains(["Public", "Private", "HiddenMembership"], try(v.visibility, ""))
+      for k, v in var.groups : v.visibility == null || try(contains(["Public", "Private", "HiddenMembership"], v.visibility), false)
     ])
     error_message = "Each groups[*].visibility, if set, must be one of: Public, Private, HiddenMembership."
   }

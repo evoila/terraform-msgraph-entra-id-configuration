@@ -18,8 +18,9 @@ resource "msgraph_resource" "domains" {
 }
 
 # ... then update the password policy properties. (This MUST be done in a separate PATCH request.)
+# Note: Microsoft Graph rejects password policy updates on unverified domains, so they are skipped here.
 resource "msgraph_update_resource" "domain_password_policy" {
-  for_each = var.domains
+  for_each = { for key, domain in var.domains : key => domain if try(local.domain_detail[domain.name].isVerified, false) == true }
 
   url = "domains/${each.value.name}"
 

@@ -431,3 +431,95 @@ variable "access_reviews" {
     error_message = "Each access_reviews[*].settings.apply_actions must be one of: removeAccessApplyAction, disableAndDeleteUserApplyAction."
   }
 }
+
+variable "groups" {
+  type = map(object({
+    display_name                     = string
+    mail_nickname                    = string
+    description                      = optional(string)
+    security_enabled                 = optional(bool, true)
+    mail_enabled                     = optional(bool, false)
+    group_types                      = optional(list(string), [])
+    visibility                       = optional(string)
+    is_assignable_to_role            = optional(bool, false)
+    membership_rule                  = optional(string)
+    membership_rule_processing_state = optional(string, "On")
+    owners                           = optional(list(string), [])
+    members                          = optional(list(string), [])
+  }))
+  default     = {}
+  description = <<-DESCRIPTION
+  A map of Entra ID groups to manage. Defaults to `{}` (no groups). The map key is arbitrary; the value supports the following attributes:
+  - `display_name` - The group's display name.
+  - `mail_nickname` - The mail alias for the group, unique within the tenant. Required by Microsoft Graph even for groups that are not mail-enabled.
+  - `description` - An optional description for the group.
+  - `security_enabled` - Whether the group is security-enabled. Defaults to `true`. Must be `true` for security groups and for role-assignable groups.
+  - `mail_enabled` - Whether the group is mail-enabled. Defaults to `false`. Must be `true` for Microsoft 365 groups (requires `"Unified"` in `group_types`).
+  - `group_types` - Controls the group type, per https://learn.microsoft.com/en-us/graph/api/group-post-groups#grouptypes-options. Must be one of `[]` (assigned-membership security group), `["Unified"]` (assigned-membership Microsoft 365 group), `["DynamicMembership"]` (dynamic security group), or `["Unified", "DynamicMembership"]` (dynamic Microsoft 365 group). Defaults to `[]`.
+  - `visibility` - The group's visibility. Can be `Public`, `Private`, or `HiddenMembership`. Only meaningful for Microsoft 365 groups (`"Unified"` in `group_types`).
+  - `is_assignable_to_role` - Whether the group can be assigned an Entra ID role. Requires `security_enabled = true`, is incompatible with dynamic membership, and requires `visibility = "Private"`. Defaults to `false`.
+  - `membership_rule` - The dynamic membership rule, using Microsoft Graph's membership rule syntax. See https://learn.microsoft.com/en-us/entra/identity/users/groups-dynamic-membership. Requires `group_types` to include `"DynamicMembership"` and requires the tenant to have an Entra ID P1 (or higher) license.
+  - `membership_rule_processing_state` - Whether the dynamic membership rule is actively processed. Can be `On` or `Paused`. Only relevant when `membership_rule` is set. Defaults to `On`.
+  - `owners` - A list of existing Entra ID object IDs (for example, user object IDs) to set as group owners. This list is fully reconciled on every `terraform apply` (object IDs not listed here are removed as owners). Defaults to `[]`.
+  - `members` - A list of existing Entra ID object IDs to set as group members. This list is fully reconciled on every `terraform apply` (object IDs not listed here are removed as members). Not valid together with `membership_rule`, since dynamic group membership is computed by Microsoft Graph. Defaults to `[]`.
+  DESCRIPTION
+
+  validation {
+    condition = alltrue([
+      for k, v in var.groups : can(regex("^[^@()\\\\\\[\\]\";:<>, ]{1,64}$", v.mail_nickname))
+    ])
+    error_message = "Each groups[*].mail_nickname must be 1-64 characters and must not contain @()\\[]\";:<>, or spaces."
+  }
+
+  validation {
+    condition = alltrue([
+      for k, v in var.groups : alltrue([for group_type in v.group_types : contains(["Unified", "DynamicMembership"], group_type)]) && length(distinct(v.group_types)) == length(v.group_types)
+    ])
+    error_message = "Each groups[*].group_types must only contain \"Unified\" and/or \"DynamicMembership\", with no duplicates."
+  }
+
+  validation {
+    condition = alltrue([
+      for k, v in var.groups : v.mail_enabled == false || contains(v.group_types, "Unified")
+    ])
+    error_message = "Each groups[*] with mail_enabled = true must include \"Unified\" in group_types (only Microsoft 365 groups can be mail-enabled)."
+  }
+
+  validation {
+    condition = alltrue([
+      for k, v in var.groups : v.membership_rule == null || contains(v.group_types, "DynamicMembership")
+    ])
+    error_message = "Each groups[*].membership_rule requires \"DynamicMembership\" in group_types."
+  }
+
+  validation {
+    condition = alltrue([
+      for k, v in var.groups : v.membership_rule == null || length(v.members) == 0
+    ])
+    error_message = "Each groups[*] with membership_rule set must not also set members, since dynamic group membership is computed by Microsoft Graph."
+  }
+
+  validation {
+    condition = alltrue([
+      for k, v in var.groups : contains(["On", "Paused"], v.membership_rule_processing_state)
+    ])
+    error_message = "Each groups[*].membership_rule_processing_state must be \"On\" or \"Paused\"."
+  }
+
+  validation {
+    condition = alltrue([
+      for k, v in var.groups : v.visibility == null || try(contains(["Public", "Private", "HiddenMembership"], v.visibility), false)
+    ])
+    error_message = "Each groups[*].visibility, if set, must be one of: Public, Private, HiddenMembership."
+  }
+
+  validation {
+    condition = alltrue([
+      for k, v in var.groups : v.is_assignable_to_role == false || (
+        v.security_enabled == true &&
+        !contains(v.group_types, "DynamicMembership") &&
+      v.visibility == "Private")
+    ])
+    error_message = "Each groups[*] with is_assignable_to_role = true must have security_enabled = true, must not use dynamic membership, and must set visibility = \"Private\"."
+  }
+}

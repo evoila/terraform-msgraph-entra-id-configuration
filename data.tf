@@ -17,6 +17,14 @@ data "msgraph_resource" "domain_verification_records" {
   }
 }
 
+# Get all configured groups
+data "msgraph_resource" "groups" {
+  url = "groups"
+  response_export_values = {
+    all = "@"
+  }
+}
+
 # Get tenant's SKU service plans
 # see https://learn.microsoft.com/en-us/entra/identity/users/licensing-service-plan-reference
 data "msgraph_resource" "subscribed_skus" {

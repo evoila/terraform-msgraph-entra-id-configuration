@@ -7,6 +7,7 @@ This Terraform module is designed to simplify Entra ID tenant configuration, inc
 ## Features
 
 - ✅ Configure basic [organization settings](https://learn.microsoft.com/en-us/graph/api/resources/organization).
+- 🟦 Configure [groups](https://learn.microsoft.com/en-us/graph/api/resources/group) (security and Microsoft 365 groups, including dynamic membership) and their owners/members. See below for current limitations.
 - ✅ Configure the [authorization policy](https://learn.microsoft.com/en-us/graph/api/resources/authorizationpolicy).
 - ✅ Enable or disable [security defaults](https://learn.microsoft.com/en-us/entra/fundamentals/security-defaults).
 - Configure [authentication methods policies](https://learn.microsoft.com/en-us/graph/api/resources/authenticationmethodspolicies-overview):
@@ -35,6 +36,66 @@ This Terraform module is designed to simplify Entra ID tenant configuration, inc
 This module is under development and currently considered a [minimum viable product](https://en.wikipedia.org/wiki/Minimum_viable_product) (MVP). Please create an issue in the [module GitHub repository](https://github.com/evoila/terraform-msgraph-entra-id-configuration/issues) if you have feature requests.
 
 > **IMPORTANT** Microsoft Graph uses an _eventual consistency_ model. This means, changes are not immediately visible after a write. See [designing for eventual consistency for Microsoft Entra](https://devblogs.microsoft.com/identity/designing-for-eventual-consistency-for-microsoft-entra/) for more details.
+
+## Configuring Groups
+
+The module can create and manage [security groups and Microsoft 365 groups](https://learn.microsoft.com/en-us/graph/api/resources/group), including [dynamic membership groups](https://learn.microsoft.com/en-us/entra/identity/users/groups-dynamic-membership) via `membership_rule` (requires an Entra ID P1 or higher license). Group owners and members are referenced by their existing Entra ID object ID (GUID) - creating or managing the underlying users is out of scope for this module.
+
+> **NOTE**
+>
+> - Group membership (`owners`/`members`) is fully reconciled on every `terraform apply`: object IDs removed from the list are removed from the group in Entra ID, and any added are added. If members are also managed by another process (for example manually, or via a dynamic membership rule), do not list them here to avoid Terraform reverting out-of-band changes.
+> - Since owners are attached after group creation rather than at creation time, there is a brief window where a newly created group has no owner ("anonymously owned" in Microsoft Graph terms). Configure at least one owner for any group that needs to be manageable afterwards.
+
+Here is an example of a security group and a dynamic Microsoft 365 group:
+
+```hcl
+groups = {
+  engineering = {
+    display_name  = "Engineering"
+    mail_nickname = "engineering"
+    group_types   = [] # plain security group
+    owners        = ["11111111-2222-3333-4444-555555555555"]
+    members = [
+      "66666666-7777-8888-9999-000000000000",
+      "77777777-8888-9999-0000-111111111111",
+    ]
+  }
+  all_sales = {
+    display_name    = "All Sales (dynamic)"
+    mail_nickname   = "all-sales"
+    mail_enabled    = true
+    group_types     = ["Unified", "DynamicMembership"]
+    visibility      = "Private"
+    membership_rule = "(user.department -eq \"Sales\")"
+  }
+}
+```
+
+The group's Entra ID object ID is exposed via the `group_ids` output and can be referenced from other resources configured by this module, for example to scope an [access review](#configuring-access-reviews) to the `engineering` group:
+
+```hcl
+access_reviews = {
+  engineering_review = {
+    # ...
+    scope = {
+      template = "users_assigned_to_group"
+      template_vars = {
+        group_id = module.entra.group_ids["engineering"]
+      }
+    }
+  }
+}
+```
+
+or to scope an authentication method policy (for example FIDO2) to a managed group:
+
+```hcl
+authentication_methods_policy_configuration = {
+  fido2 = {
+    included_groups = [module.entra.group_ids["engineering"]]
+  }
+}
+```
 
 ## Configuring the Authorization Policy
 
@@ -114,7 +175,10 @@ The following resources are used by this module:
 
 - [msgraph_resource.access_review_definition](https://registry.terraform.io/providers/microsoft/msgraph/latest/docs/resources/resource) (resource)
 - [msgraph_resource.domains](https://registry.terraform.io/providers/microsoft/msgraph/latest/docs/resources/resource) (resource)
+- [msgraph_resource.groups](https://registry.terraform.io/providers/microsoft/msgraph/latest/docs/resources/resource) (resource)
 - [msgraph_resource_action.domain_verify](https://registry.terraform.io/providers/microsoft/msgraph/latest/docs/resources/resource_action) (resource)
+- [msgraph_resource_collection.group_members](https://registry.terraform.io/providers/microsoft/msgraph/latest/docs/resources/resource_collection) (resource)
+- [msgraph_resource_collection.group_owners](https://registry.terraform.io/providers/microsoft/msgraph/latest/docs/resources/resource_collection) (resource)
 - [msgraph_update_resource.domain_password_policy](https://registry.terraform.io/providers/microsoft/msgraph/latest/docs/resources/update_resource) (resource)
 - [msgraph_update_resource.entra_authentication_method_policy_email_update](https://registry.terraform.io/providers/microsoft/msgraph/latest/docs/resources/update_resource) (resource)
 - [msgraph_update_resource.entra_authentication_method_policy_fido2_update](https://registry.terraform.io/providers/microsoft/msgraph/latest/docs/resources/update_resource) (resource)
@@ -123,8 +187,10 @@ The following resources are used by this module:
 - [msgraph_update_resource.entra_authorization_policy_update](https://registry.terraform.io/providers/microsoft/msgraph/latest/docs/resources/update_resource) (resource)
 - [msgraph_update_resource.entra_organization_update](https://registry.terraform.io/providers/microsoft/msgraph/latest/docs/resources/update_resource) (resource)
 - [msgraph_update_resource.entra_security_defaults_update](https://registry.terraform.io/providers/microsoft/msgraph/latest/docs/resources/update_resource) (resource)
+- [msgraph_update_resource.group_membership_rule](https://registry.terraform.io/providers/microsoft/msgraph/latest/docs/resources/update_resource) (resource)
 - [msgraph_resource.domain_verification_records](https://registry.terraform.io/providers/microsoft/msgraph/latest/docs/data-sources/resource) (data source)
 - [msgraph_resource.domains](https://registry.terraform.io/providers/microsoft/msgraph/latest/docs/data-sources/resource) (data source)
+- [msgraph_resource.groups](https://registry.terraform.io/providers/microsoft/msgraph/latest/docs/data-sources/resource) (data source)
 - [msgraph_resource.subscribed_skus](https://registry.terraform.io/providers/microsoft/msgraph/latest/docs/data-sources/resource) (data source)
 
 <!-- markdownlint-disable MD013 -->
@@ -487,6 +553,43 @@ Type: `bool`
 
 Default: `true`
 
+### <a name="input_groups"></a> [groups](#input\_groups)
+
+Description: A map of Entra ID groups to manage. Defaults to `{}` (no groups). The map key is arbitrary; the value supports the following attributes:
+- `display_name` - The group's display name.
+- `mail_nickname` - The mail alias for the group, unique within the tenant. Required by Microsoft Graph even for groups that are not mail-enabled.
+- `description` - An optional description for the group.
+- `security_enabled` - Whether the group is security-enabled. Defaults to `true`. Must be `true` for security groups and for role-assignable groups.
+- `mail_enabled` - Whether the group is mail-enabled. Defaults to `false`. Must be `true` for Microsoft 365 groups (requires `"Unified"` in `group_types`).
+- `group_types` - Controls the group type, per https://learn.microsoft.com/en-us/graph/api/group-post-groups#grouptypes-options. Must be one of `[]` (assigned-membership security group), `["Unified"]` (assigned-membership Microsoft 365 group), `["DynamicMembership"]` (dynamic security group), or `["Unified", "DynamicMembership"]` (dynamic Microsoft 365 group). Defaults to `[]`.
+- `visibility` - The group's visibility. Can be `Public`, `Private`, or `HiddenMembership`. Only meaningful for Microsoft 365 groups (`"Unified"` in `group_types`).
+- `is_assignable_to_role` - Whether the group can be assigned an Entra ID role. Requires `security_enabled = true`, is incompatible with dynamic membership, and requires `visibility = "Private"`. Defaults to `false`.
+- `membership_rule` - The dynamic membership rule, using Microsoft Graph's membership rule syntax. See https://learn.microsoft.com/en-us/entra/identity/users/groups-dynamic-membership. Requires `group_types` to include `"DynamicMembership"` and requires the tenant to have an Entra ID P1 (or higher) license.
+- `membership_rule_processing_state` - Whether the dynamic membership rule is actively processed. Can be `On` or `Paused`. Only relevant when `membership_rule` is set. Defaults to `On`.
+- `owners` - A list of existing Entra ID object IDs (for example, user object IDs) to set as group owners. This list is fully reconciled on every `terraform apply` (object IDs not listed here are removed as owners). Defaults to `[]`.
+- `members` - A list of existing Entra ID object IDs to set as group members. This list is fully reconciled on every `terraform apply` (object IDs not listed here are removed as members). Not valid together with `membership_rule`, since dynamic group membership is computed by Microsoft Graph. Defaults to `[]`.
+
+Type:
+
+```hcl
+map(object({
+    display_name                     = string
+    mail_nickname                    = string
+    description                      = optional(string)
+    security_enabled                 = optional(bool, true)
+    mail_enabled                     = optional(bool, false)
+    group_types                      = optional(list(string), [])
+    visibility                       = optional(string)
+    is_assignable_to_role            = optional(bool, false)
+    membership_rule                  = optional(string)
+    membership_rule_processing_state = optional(string, "On")
+    owners                           = optional(list(string), [])
+    members                          = optional(list(string), [])
+  }))
+```
+
+Default: `{}`
+
 ### <a name="input_guest_user_role"></a> [guest\_user\_role](#input\_guest\_user\_role)
 
 Description: The role that should be granted to guest user. Currently following roles are supported: `user`, `guestUser` and `restrictedGuestUser`. Defaults to `restrictedGuestUser`.
@@ -545,6 +648,10 @@ Description: DNS verification record information for all unverified domains.
 ### <a name="output_domains_detail"></a> [domains\_detail](#output\_domains\_detail)
 
 Description: All configured domains.
+
+### <a name="output_groups_detail"></a> [groups\_detail](#output\_groups\_detail)
+
+Description: All configured groups, keyed by group object ID, reflecting actual tenant state.
 
 ### <a name="output_license_level"></a> [license\_level](#output\_license\_level)
 

@@ -52,3 +52,8 @@ output "domain_verification_records" {
   value       = { for id, domain in try(data.msgraph_resource.domain_verification_records, {}) : id => domain.output.all.value }
   description = "DNS verification record information for all unverified domains."
 }
+
+output "groups_detail" {
+  value       = { for key, group in try(data.msgraph_resource.groups.output.all.value, {}) : group.id => group }
+  description = "All configured groups, keyed by group object ID, reflecting actual tenant state."
+}

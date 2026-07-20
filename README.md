@@ -649,6 +649,10 @@ Description: DNS verification record information for all unverified domains.
 
 Description: All configured domains.
 
+### <a name="output_group_ids"></a> [group\_ids](#output\_group\_ids)
+
+Description: Map of configured group keys (as used in var.groups) to their Entra ID object IDs, for referencing managed groups from other module inputs.
+
 ### <a name="output_groups_detail"></a> [groups\_detail](#output\_groups\_detail)
 
 Description: All configured groups, keyed by group object ID, reflecting actual tenant state.

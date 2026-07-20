@@ -57,3 +57,8 @@ output "groups_detail" {
   value       = { for key, group in try(data.msgraph_resource.groups.output.all.value, {}) : group.id => group }
   description = "All configured groups, keyed by group object ID, reflecting actual tenant state."
 }
+
+output "group_ids" {
+  value       = { for key, group in msgraph_resource.groups : key => group.id }
+  description = "Map of configured group keys (as used in var.groups) to their Entra ID object IDs, for referencing managed groups from other module inputs."
+}

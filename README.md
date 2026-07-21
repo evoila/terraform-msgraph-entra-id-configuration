@@ -655,7 +655,7 @@ Description: Map of configured group keys (as used in var.groups) to their Entra
 
 ### <a name="output_groups_detail"></a> [groups\_detail](#output\_groups\_detail)
 
-Description: All configured groups, keyed by group object ID, reflecting actual tenant state.
+Description: All configured groups, keyed by group object ID.
 
 ### <a name="output_license_level"></a> [license\_level](#output\_license\_level)
 

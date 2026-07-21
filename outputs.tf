@@ -54,8 +54,8 @@ output "domain_verification_records" {
 }
 
 output "groups_detail" {
-  value       = { for key, group in try(data.msgraph_resource.groups.output.all.value, {}) : group.id => group }
-  description = "All configured groups, keyed by group object ID, reflecting actual tenant state."
+  value       = { for key, group in msgraph_resource.groups : group.id => try(group.output.all, {}) }
+  description = "All configured groups, keyed by group object ID."
 }
 
 output "group_ids" {

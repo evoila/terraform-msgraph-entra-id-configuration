@@ -59,6 +59,6 @@ output "groups_detail" {
 }
 
 output "group_ids" {
-  value       = { for key, group in msgraph_resource.groups : key => group.id }
+  value       = { for key, group in msgraph_update_resource.groups_update : key => group.id }
   description = "Map of configured group keys (as used in var.groups) to their Entra ID object IDs, for referencing managed groups from other module inputs."
 }

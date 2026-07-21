@@ -189,6 +189,61 @@ run "test_group_owners_and_members_attachment" {
   }
 }
 
+# Test case: properties that Microsoft Graph only allows setting at creation (groupTypes,
+# mailEnabled, isAssignableToRole) must never be re-sent in a later PATCH, even if the caller
+# changes them in configuration - Graph rejects such a request with a 400 Bad Request. This
+# reproduces the two-apply sequence that failed in a real deployment: create a group, then apply
+# again with those fields changed.
+run "test_immutable_properties_frozen_after_creation" {
+  command = apply
+
+  variables {
+    groups = {
+      frozen = {
+        display_name  = "Frozen Group"
+        mail_nickname = "frozen-group"
+        mail_enabled  = false
+        group_types   = []
+      }
+    }
+  }
+
+  assert {
+    condition     = msgraph_resource.groups["frozen"].body.mailEnabled == false
+    error_message = "The group must be created with mailEnabled = false as configured."
+  }
+}
+
+run "test_immutable_properties_frozen_after_creation_second_apply" {
+  command = plan
+
+  variables {
+    groups = {
+      frozen = {
+        display_name  = "Frozen Group"
+        mail_nickname = "frozen-group"
+        mail_enabled  = true # attempt to flip a create-only property
+        group_types   = ["Unified"]
+      }
+    }
+  }
+
+  assert {
+    condition     = msgraph_resource.groups["frozen"].body.mailEnabled == false
+    error_message = "mailEnabled must stay frozen at its original creation-time value and must not be re-planned, since Graph rejects it in a PATCH."
+  }
+
+  assert {
+    condition     = jsonencode(msgraph_resource.groups["frozen"].body.groupTypes) == jsonencode([])
+    error_message = "groupTypes must stay frozen at its original creation-time value and must not be re-planned, since Graph rejects it in a PATCH."
+  }
+
+  assert {
+    condition     = msgraph_update_resource.groups_update["frozen"].body.displayName == "Frozen Group"
+    error_message = "The groups_update resource must keep managing the properties Graph allows updating indefinitely."
+  }
+}
+
 # Test case: variable validation blocks should reject invalid input at plan time
 run "invalid_mail_nickname" {
   command = plan

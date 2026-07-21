@@ -232,6 +232,7 @@ The following resources are used by this module:
 - [msgraph_update_resource.entra_security_defaults_update](https://registry.terraform.io/providers/microsoft/msgraph/latest/docs/resources/update_resource) (resource)
 - [msgraph_update_resource.group_membership_rule](https://registry.terraform.io/providers/microsoft/msgraph/latest/docs/resources/update_resource) (resource)
 - [random_password.user](https://registry.terraform.io/providers/hashicorp/random/latest/docs/resources/password) (resource)
+- [msgraph_update_resource.groups_update](https://registry.terraform.io/providers/microsoft/msgraph/latest/docs/resources/update_resource) (resource)
 - [msgraph_resource.domain_verification_records](https://registry.terraform.io/providers/microsoft/msgraph/latest/docs/data-sources/resource) (data source)
 - [msgraph_resource.domains](https://registry.terraform.io/providers/microsoft/msgraph/latest/docs/data-sources/resource) (data source)
 - [msgraph_resource.groups](https://registry.terraform.io/providers/microsoft/msgraph/latest/docs/data-sources/resource) (data source)
@@ -758,9 +759,13 @@ Description: DNS verification record information for all unverified domains.
 
 Description: All configured domains.
 
+### <a name="output_group_ids"></a> [group\_ids](#output\_group\_ids)
+
+Description: Map of configured group keys (as used in var.groups) to their Entra ID object IDs, for referencing managed groups from other module inputs.
+
 ### <a name="output_groups_detail"></a> [groups\_detail](#output\_groups\_detail)
 
-Description: All configured groups, keyed by group object ID, reflecting actual tenant state.
+Description: All configured groups, keyed by group object ID.
 
 ### <a name="output_license_level"></a> [license\_level](#output\_license\_level)
 

@@ -1,11 +1,16 @@
 # Configure Entra ID groups
 # see https://learn.microsoft.com/en-us/graph/api/resources/group
 
-# Create/update group objects.
-# Note: Graph disallows several mail-related properties on the initial create (accessType,
-# allowExternalSenders, autoSubscribeNewMembers, hideFromAddressLists, hideFromOutlookClients,
-# isFavorite) - these are not exposed by this module yet; exposing them later would require a
-# separate PATCH-based resource, following the domain_password_policy pattern below.
+# Create group objects.
+# Note: groupTypes, mailEnabled and isAssignableToRole can only be set here, at creation. They are not
+# part of the PATCH /groups/{id} property set (isAssignableToRole is explicitly documented as
+# immutable once set; groupTypes/mailEnabled simply aren't accepted by that endpoint), and Graph
+# rejects a PATCH request that includes them with a 400 Bad Request - even when reconciling an
+# imported group whose values already match. This resource's body is therefore frozen after
+# creation via ignore_changes; msgraph_update_resource.groups_update below manages the properties
+# that Microsoft Graph does allow updating indefinitely. See
+# https://learn.microsoft.com/en-us/graph/api/group-update and
+# https://learn.microsoft.com/en-us/graph/api/resources/group.
 resource "msgraph_resource" "groups" {
   for_each = var.groups
 
@@ -23,6 +28,29 @@ resource "msgraph_resource" "groups" {
   }
 
   response_export_values = { "all" = "@" }
+
+  lifecycle {
+    ignore_changes = [body]
+  }
+}
+
+# Keep the subset of group properties Microsoft Graph allows updating indefinitely in sync with
+# configuration. See https://learn.microsoft.com/en-us/graph/api/group-update.
+resource "msgraph_update_resource" "groups_update" {
+  for_each = var.groups
+
+  url = "groups/${msgraph_resource.groups[each.key].id}"
+
+  body = {
+    displayName     = each.value.display_name
+    mailNickname    = each.value.mail_nickname
+    description     = each.value.description
+    securityEnabled = each.value.security_enabled
+    visibility      = each.value.visibility
+  }
+
+  response_export_values = { "all" = "@" }
+  depends_on             = [msgraph_resource.groups]
 }
 
 # The dynamic membership rule is configured via a separate PATCH request (mirroring the domain

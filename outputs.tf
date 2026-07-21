@@ -54,8 +54,13 @@ output "domain_verification_records" {
 }
 
 output "groups_detail" {
-  value       = { for key, group in try(data.msgraph_resource.groups.output.all.value, {}) : group.id => group }
-  description = "All configured groups, keyed by group object ID, reflecting actual tenant state."
+  value       = { for key, group in msgraph_resource.groups : group.id => try(group.output.all, {}) }
+  description = "All configured groups, keyed by group object ID."
+}
+
+output "group_ids" {
+  value       = { for key, group in msgraph_update_resource.groups_update : key => group.id }
+  description = "Map of configured group keys (as used in var.groups) to their Entra ID object IDs, for referencing managed groups from other module inputs."
 }
 
 output "user_ids" {

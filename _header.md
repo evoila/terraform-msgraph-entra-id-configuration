@@ -5,6 +5,7 @@ This Terraform module is designed to simplify Entra ID tenant configuration, inc
 ## Features
 
 - ✅ Configure basic [organization settings](https://learn.microsoft.com/en-us/graph/api/resources/organization).
+- 🟦 Configure [users](https://learn.microsoft.com/en-us/graph/api/resources/user) (create/update, built-in Entra role assignment). See below for current limitations.
 - 🟦 Configure [groups](https://learn.microsoft.com/en-us/graph/api/resources/group) (security and Microsoft 365 groups, including dynamic membership) and their owners/members. See below for current limitations.
 - ✅ Configure the [authorization policy](https://learn.microsoft.com/en-us/graph/api/resources/authorizationpolicy).
 - ✅ Enable or disable [security defaults](https://learn.microsoft.com/en-us/entra/fundamentals/security-defaults).
@@ -91,6 +92,44 @@ or to scope an authentication method policy (for example FIDO2) to a managed gro
 authentication_methods_policy_configuration = {
   fido2 = {
     included_groups = [module.entra.group_ids["engineering"]]
+  }
+}
+```
+
+## Configuring Users
+
+The module can create and manage [users](https://learn.microsoft.com/en-us/graph/api/resources/user) and assign
+them a curated set of built-in Entra ID directory roles, tenant-wide. Its **primary use-cases** are onboarding of initial tenant admin accounts and the creation of [emergency access (break-glass) accounts](https://learn.microsoft.com/en-us/entra/identity/role-based-access-control/security-emergency-access). Use the official [Hashicorp AzureAD Terraform provider](https://registry.terraform.io/providers/hashicorp/azuread/) if you require full user-management capabilities.
+
+Initial passwords are supplied via the separate, sensitive `user_passwords` variable rather than `users` itself,
+since sensitive values cannot be used in `for_each`. Any user without a matching entry in `user_passwords` gets a
+random password auto-generated instead - the generated value is available (per user) via the `users_details`
+output.
+
+> **NOTE**
+>
+> - Adding module-created users to module-managed groups is not directly supported by the `users` variable. Add
+>   the object ID (from the `user_ids` output) to the relevant entry's `members`/`owners` list in
+>   [`groups`](#configuring-groups) on a subsequent `terraform apply` instead, the same way as for any pre-existing
+>   user.
+> - Role assignments are always tenant-wide scoped (`directoryScopeId = "/"`); administrative-unit-scoped role
+>   assignments are not supported.
+
+```hcl
+users = {
+  jane = {
+    user_principal_name = "jane.doe@contoso.com"
+    display_name        = "Jane Doe"
+    mail_nickname       = "jane.doe"
+    department          = "Engineering"
+    usage_location       = "DE"
+    assigned_roles       = ["User Administrator"]
+  }
+}
+
+user_passwords = {
+  jane = {
+    password = "..." # supply via a secrets-managed .tfvars or pipeline variables. Never commit this!
   }
 }
 ```

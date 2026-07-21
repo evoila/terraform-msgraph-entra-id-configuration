@@ -57,3 +57,13 @@ output "groups_detail" {
   value       = { for key, group in try(data.msgraph_resource.groups.output.all.value, {}) : group.id => group }
   description = "All configured groups, keyed by group object ID, reflecting actual tenant state."
 }
+
+output "user_ids" {
+  value       = { for key, user in msgraph_resource.users : key => user.id }
+  description = "Object IDs of all managed users, keyed by the map key used in var.users. Useful for referencing module-created users in var.groups[*].members/owners on a later apply."
+}
+
+output "users_details" {
+  value       = { for key, user in msgraph_resource.users : user.id => try(user.output.all, {}) }
+  description = "All configured users, keyed by user object ID, reflecting configured state."
+}

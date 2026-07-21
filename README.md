@@ -7,6 +7,7 @@ This Terraform module is designed to simplify Entra ID tenant configuration, inc
 ## Features
 
 - ✅ Configure basic [organization settings](https://learn.microsoft.com/en-us/graph/api/resources/organization).
+- 🟦 Configure [users](https://learn.microsoft.com/en-us/graph/api/resources/user) (create/update, built-in Entra role assignment). See below for current limitations.
 - 🟦 Configure [groups](https://learn.microsoft.com/en-us/graph/api/resources/group) (security and Microsoft 365 groups, including dynamic membership) and their owners/members. See below for current limitations.
 - ✅ Configure the [authorization policy](https://learn.microsoft.com/en-us/graph/api/resources/authorizationpolicy).
 - ✅ Enable or disable [security defaults](https://learn.microsoft.com/en-us/entra/fundamentals/security-defaults).
@@ -97,6 +98,44 @@ authentication_methods_policy_configuration = {
 }
 ```
 
+## Configuring Users
+
+The module can create and manage [users](https://learn.microsoft.com/en-us/graph/api/resources/user) and assign
+them a curated set of built-in Entra ID directory roles, tenant-wide. Its **primary use-cases** are onboarding of initial tenant admin accounts and the creation of [emergency access (break-glass) accounts](https://learn.microsoft.com/en-us/entra/identity/role-based-access-control/security-emergency-access). Use the official [Hashicorp AzureAD Terraform provider](https://registry.terraform.io/providers/hashicorp/azuread/) if you require full user-management capabilities.
+
+Initial passwords are supplied via the separate, sensitive `user_passwords` variable rather than `users` itself,
+since sensitive values cannot be used in `for_each`. Any user without a matching entry in `user_passwords` gets a
+random password auto-generated instead - the generated value is available (per user) via the `users_details`
+output.
+
+> **NOTE**
+>
+> - Adding module-created users to module-managed groups is not directly supported by the `users` variable. Add
+>   the object ID (from the `user_ids` output) to the relevant entry's `members`/`owners` list in
+>   [`groups`](#configuring-groups) on a subsequent `terraform apply` instead, the same way as for any pre-existing
+>   user.
+> - Role assignments are always tenant-wide scoped (`directoryScopeId = "/"`); administrative-unit-scoped role
+>   assignments are not supported.
+
+```hcl
+users = {
+  jane = {
+    user_principal_name = "jane.doe@contoso.com"
+    display_name        = "Jane Doe"
+    mail_nickname       = "jane.doe"
+    department          = "Engineering"
+    usage_location       = "DE"
+    assigned_roles       = ["User Administrator"]
+  }
+}
+
+user_passwords = {
+  jane = {
+    password = "..." # supply via a secrets-managed .tfvars or pipeline variables. Never commit this!
+  }
+}
+```
+
 ## Configuring the Authorization Policy
 
 The [authorization policy](https://learn.microsoft.com/en-us/graph/api/resources/authorizationpolicy) controls
@@ -169,6 +208,8 @@ The following requirements are needed by this module:
 
 - <a name="requirement_msgraph"></a> [msgraph](#requirement\_msgraph) (>= 0.3.0)
 
+- <a name="requirement_random"></a> [random](#requirement\_random) (>= 3.6.0)
+
 ## Resources
 
 The following resources are used by this module:
@@ -176,6 +217,8 @@ The following resources are used by this module:
 - [msgraph_resource.access_review_definition](https://registry.terraform.io/providers/microsoft/msgraph/latest/docs/resources/resource) (resource)
 - [msgraph_resource.domains](https://registry.terraform.io/providers/microsoft/msgraph/latest/docs/resources/resource) (resource)
 - [msgraph_resource.groups](https://registry.terraform.io/providers/microsoft/msgraph/latest/docs/resources/resource) (resource)
+- [msgraph_resource.user_role_assignments](https://registry.terraform.io/providers/microsoft/msgraph/latest/docs/resources/resource) (resource)
+- [msgraph_resource.users](https://registry.terraform.io/providers/microsoft/msgraph/latest/docs/resources/resource) (resource)
 - [msgraph_resource_action.domain_verify](https://registry.terraform.io/providers/microsoft/msgraph/latest/docs/resources/resource_action) (resource)
 - [msgraph_resource_collection.group_members](https://registry.terraform.io/providers/microsoft/msgraph/latest/docs/resources/resource_collection) (resource)
 - [msgraph_resource_collection.group_owners](https://registry.terraform.io/providers/microsoft/msgraph/latest/docs/resources/resource_collection) (resource)
@@ -188,6 +231,7 @@ The following resources are used by this module:
 - [msgraph_update_resource.entra_organization_update](https://registry.terraform.io/providers/microsoft/msgraph/latest/docs/resources/update_resource) (resource)
 - [msgraph_update_resource.entra_security_defaults_update](https://registry.terraform.io/providers/microsoft/msgraph/latest/docs/resources/update_resource) (resource)
 - [msgraph_update_resource.group_membership_rule](https://registry.terraform.io/providers/microsoft/msgraph/latest/docs/resources/update_resource) (resource)
+- [random_password.user](https://registry.terraform.io/providers/hashicorp/random/latest/docs/resources/password) (resource)
 - [msgraph_update_resource.groups_update](https://registry.terraform.io/providers/microsoft/msgraph/latest/docs/resources/update_resource) (resource)
 - [msgraph_resource.domain_verification_records](https://registry.terraform.io/providers/microsoft/msgraph/latest/docs/data-sources/resource) (data source)
 - [msgraph_resource.domains](https://registry.terraform.io/providers/microsoft/msgraph/latest/docs/data-sources/resource) (data source)
@@ -614,6 +658,71 @@ Default:
 ]
 ```
 
+### <a name="input_user_passwords"></a> [user\_passwords](#input\_user\_passwords)
+
+Description: A map of initial passwords for the users in `var.users`, keyed with the same map keys. Kept as a  
+separate, sensitive variable because sensitive values cannot be used in `for_each`, which
+`var.users` is. Defaults to `{}`; any key in `var.users` without a matching entry here gets a  
+random password auto-generated instead (see the `random_password.user` resource in `users.tf`).
+- `password` - The initial password for the user. Must not be empty.
+
+Type:
+
+```hcl
+map(object({
+    password = string
+  }))
+```
+
+Default: `{}`
+
+### <a name="input_users"></a> [users](#input\_users)
+
+Description: A map of Entra ID users to manage. Defaults to `{}` (no users). Initial passwords are supplied via  
+the separate, sensitive `var.user_passwords` variable (kept out of `var.users` because sensitive  
+values cannot be used in `for_each`) - any key here without a matching entry in
+`var.user_passwords` gets a random password auto-generated instead. The map key is arbitrary; the  
+value supports the following attributes:
+- `user_principal_name` - The user's UPN (e.g. `jane.doe@contoso.com`). Must reference a verified domain of the tenant.
+- `display_name` - The user's display name.
+- `mail_nickname` - The mail alias for the user, unique within the tenant.
+- `account_enabled` - Whether the user account is enabled. Defaults to `true`.
+- `given_name` - The user's first name.
+- `surname` - The user's last name.
+- `job_title` - The user's job title.
+- `department` - The name of the department in which the user works.
+- `employee_id` - The employee identifier assigned to the user by the organization.
+- `mobile_phone` - The user's mobile phone number.
+- `business_phone` - The user's business phone number. Microsoft Graph models this as a string collection (`businessPhones`), but only ever stores a single number in practice, so this module exposes it as a plain string.
+- `other_mails` - A list of additional e-mail addresses for the user. Defaults to `[]`.
+- `usage_location` - Two-letter ISO 3166 country code, required if the user will be assigned a license.
+- `force_change_password_next_sign_in` - Whether the user must change their password on next sign-in. Defaults to `true`.
+- `assigned_roles` - A list of built-in Entra ID role display names to assign to the user tenant-wide. Must be one of the roles known to this module (see `local.directory_role_template_id`). Defaults to `[]`.
+
+Type:
+
+```hcl
+map(object({
+    user_principal_name                = string
+    display_name                       = string
+    mail_nickname                      = string
+    account_enabled                    = optional(bool, true)
+    given_name                         = optional(string)
+    surname                            = optional(string)
+    job_title                          = optional(string)
+    department                         = optional(string)
+    employee_id                        = optional(string)
+    mobile_phone                       = optional(string)
+    business_phone                     = optional(string)
+    other_mails                        = optional(list(string), [])
+    usage_location                     = optional(string)
+    force_change_password_next_sign_in = optional(bool, true)
+    assigned_roles                     = optional(list(string), [])
+  }))
+```
+
+Default: `{}`
+
 ## Outputs
 
 The following outputs are exported:
@@ -669,6 +778,14 @@ Description: The tenant organization properties.
 ### <a name="output_security_defaults_properties"></a> [security\_defaults\_properties](#output\_security\_defaults\_properties)
 
 Description: The tenant security defaults properties.
+
+### <a name="output_user_ids"></a> [user\_ids](#output\_user\_ids)
+
+Description: Object IDs of all managed users, keyed by the map key used in var.users. Useful for referencing module-created users in var.groups[*].members/owners on a later apply.
+
+### <a name="output_users_details"></a> [users\_details](#output\_users\_details)
+
+Description: All configured users, keyed by user object ID, reflecting configured state.
 
 ## Modules
 

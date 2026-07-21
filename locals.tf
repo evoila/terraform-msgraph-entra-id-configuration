@@ -7,6 +7,24 @@ locals {
     restrictedGuestUser = "2af84b1e-32c8-42b7-82bc-daa82404023b"
   }
 
+  # Curated subset of built-in Entra ID role template IDs, keyed by their display name.
+  # see https://learn.microsoft.com/en-us/entra/identity/role-based-access-control/permissions-reference
+  # Not exhaustive - extend as needed.
+  directory_role_template_id = {
+    "Global Administrator"            = "62e90394-69f5-4237-9190-012177145e10"
+    "Privileged Role Administrator"   = "e8611ab8-c189-46e8-94e1-60213ab1f814"
+    "User Administrator"              = "fe930be7-5e62-47db-91af-98c3a49a38b1"
+    "Helpdesk Administrator"          = "729827e3-9c14-49f7-bb1b-9608f156bbb8"
+    "Password Administrator"          = "966707d0-3269-4727-9be2-8c3a10f19b9d"
+    "Authentication Administrator"    = "c4e39bd9-1100-46d3-8c65-fb160da0071f"
+    "Groups Administrator"            = "fdd7a751-b60b-444a-984c-02652fe8fa1c"
+    "Application Administrator"       = "9b895d92-2cd3-44c7-9d02-a6ac2d5ea5c3"
+    "Cloud Application Administrator" = "158c047a-c907-4556-b7ef-446551a6b5f7"
+    "Security Administrator"          = "194ae4cb-b126-40b2-bd5b-6091b380977d"
+    "Security Reader"                 = "5d6b6bb7-de71-4623-b4af-96380a352509"
+    "Global Reader"                   = "f2ef992c-3afb-46b9-b7cf-a126ee74c451"
+  }
+
   permission_grant_policies_assigned_with_user_consent = concat(
     var.permission_grant_policies_assigned,
     [

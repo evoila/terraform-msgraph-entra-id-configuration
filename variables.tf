@@ -523,3 +523,111 @@ variable "groups" {
     error_message = "Each groups[*] with is_assignable_to_role = true must have security_enabled = true, must not use dynamic membership, and must set visibility = \"Private\"."
   }
 }
+
+variable "users" {
+  type = map(object({
+    user_principal_name                = string
+    display_name                       = string
+    mail_nickname                      = string
+    account_enabled                    = optional(bool, true)
+    given_name                         = optional(string)
+    surname                            = optional(string)
+    job_title                          = optional(string)
+    department                         = optional(string)
+    employee_id                        = optional(string)
+    mobile_phone                       = optional(string)
+    business_phone                     = optional(string)
+    other_mails                        = optional(list(string), [])
+    usage_location                     = optional(string)
+    force_change_password_next_sign_in = optional(bool, true)
+    assigned_roles                     = optional(list(string), [])
+  }))
+  default     = {}
+  description = <<-DESCRIPTION
+  A map of Entra ID users to manage. Defaults to `{}` (no users). Initial passwords are supplied via
+  the separate, sensitive `var.user_passwords` variable (kept out of `var.users` because sensitive
+  values cannot be used in `for_each`) - any key here without a matching entry in
+  `var.user_passwords` gets a random password auto-generated instead. The map key is arbitrary; the
+  value supports the following attributes:
+  - `user_principal_name` - The user's UPN (e.g. `jane.doe@contoso.com`). Must reference a verified domain of the tenant.
+  - `display_name` - The user's display name.
+  - `mail_nickname` - The mail alias for the user, unique within the tenant.
+  - `account_enabled` - Whether the user account is enabled. Defaults to `true`.
+  - `given_name` - The user's first name.
+  - `surname` - The user's last name.
+  - `job_title` - The user's job title.
+  - `department` - The name of the department in which the user works.
+  - `employee_id` - The employee identifier assigned to the user by the organization.
+  - `mobile_phone` - The user's mobile phone number.
+  - `business_phone` - The user's business phone number. Microsoft Graph models this as a string collection (`businessPhones`), but only ever stores a single number in practice, so this module exposes it as a plain string.
+  - `other_mails` - A list of additional e-mail addresses for the user. Defaults to `[]`.
+  - `usage_location` - Two-letter ISO 3166 country code, required if the user will be assigned a license.
+  - `force_change_password_next_sign_in` - Whether the user must change their password on next sign-in. Defaults to `true`.
+  - `assigned_roles` - A list of built-in Entra ID role display names to assign to the user tenant-wide. Must be one of the roles known to this module (see `local.directory_role_template_id`). Defaults to `[]`.
+  DESCRIPTION
+
+  validation {
+    condition = alltrue([
+      for k, v in var.users : can(regex("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$", v.user_principal_name))
+    ])
+    error_message = "Each users[*].user_principal_name must be a valid UPN (e.g. 'jane.doe@contoso.com')."
+  }
+
+  validation {
+    condition = alltrue([
+      for k, v in var.users : can(regex("^[^@()\\\\\\[\\]\";:<>, ]{1,64}$", v.mail_nickname))
+    ])
+    error_message = "Each users[*].mail_nickname must be 1-64 characters and must not contain @()\\[]\";:<>, or spaces."
+  }
+
+  validation {
+    condition = alltrue([
+      for k, v in var.users : v.usage_location == null || can(regex("^[A-Z]{2}$", v.usage_location))
+    ])
+    error_message = "Each users[*].usage_location, if set, must be a valid two-letter ISO 3166 country code (e.g. 'AT', 'DE')."
+  }
+
+  validation {
+    # Terraform variable validations may only reference variables, not locals - keep this list in
+    # sync with the keys of local.directory_role_template_id in locals.tf.
+    condition = alltrue([
+      for k, v in var.users : alltrue([
+        for role in v.assigned_roles : contains([
+          "Global Administrator",
+          "Privileged Role Administrator",
+          "User Administrator",
+          "Helpdesk Administrator",
+          "Password Administrator",
+          "Authentication Administrator",
+          "Groups Administrator",
+          "Application Administrator",
+          "Cloud Application Administrator",
+          "Security Administrator",
+          "Security Reader",
+          "Global Reader",
+        ], role)
+      ])
+    ])
+    error_message = "Each users[*].assigned_roles entry must be one of the built-in role names known to this module (see local.directory_role_template_id in locals.tf)."
+  }
+}
+
+variable "user_passwords" {
+  type = map(object({
+    password = string
+  }))
+  default     = {}
+  sensitive   = true
+  description = <<-DESCRIPTION
+  A map of initial passwords for the users in `var.users`, keyed with the same map keys. Kept as a
+  separate, sensitive variable because sensitive values cannot be used in `for_each`, which
+  `var.users` is. Defaults to `{}`; any key in `var.users` without a matching entry here gets a
+  random password auto-generated instead (see the `random_password.user` resource in `users.tf`).
+  - `password` - The initial password for the user. Must not be empty.
+  DESCRIPTION
+
+  validation {
+    condition     = alltrue([for k, v in var.user_passwords : length(v.password) > 0])
+    error_message = "Each user_passwords[*].password must not be empty."
+  }
+}

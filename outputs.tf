@@ -62,3 +62,13 @@ output "group_ids" {
   value       = { for key, group in msgraph_update_resource.groups_update : key => group.id }
   description = "Map of configured group keys (as used in var.groups) to their Entra ID object IDs, for referencing managed groups from other module inputs."
 }
+
+output "user_ids" {
+  value       = { for key, user in msgraph_resource.users : key => user.id }
+  description = "Object IDs of all managed users, keyed by the map key used in var.users. Useful for referencing module-created users in var.groups[*].members/owners on a later apply."
+}
+
+output "users_details" {
+  value       = { for key, user in msgraph_resource.users : user.id => try(user.output.all, {}) }
+  description = "All configured users, keyed by user object ID, reflecting configured state."
+}

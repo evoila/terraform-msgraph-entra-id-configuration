@@ -8,5 +8,10 @@ terraform {
       source  = "microsoft/msgraph"
       version = ">= 0.3.0"
     }
+    # Used to auto-generate initial passwords for users without an entry in var.user_passwords
+    random = {
+      source  = "hashicorp/random"
+      version = ">= 3.6.0"
+    }
   }
 }

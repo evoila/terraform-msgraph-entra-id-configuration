@@ -226,13 +226,14 @@ The following resources are used by this module:
 - [msgraph_update_resource.entra_authentication_method_policy_email_update](https://registry.terraform.io/providers/microsoft/msgraph/latest/docs/resources/update_resource) (resource)
 - [msgraph_update_resource.entra_authentication_method_policy_fido2_update](https://registry.terraform.io/providers/microsoft/msgraph/latest/docs/resources/update_resource) (resource)
 - [msgraph_update_resource.entra_authentication_method_policy_microsoft_authenticator_update](https://registry.terraform.io/providers/microsoft/msgraph/latest/docs/resources/update_resource) (resource)
+- [msgraph_update_resource.entra_authentication_method_policy_sms_update](https://registry.terraform.io/providers/microsoft/msgraph/latest/docs/resources/update_resource) (resource)
 - [msgraph_update_resource.entra_authentication_method_policy_software_oath_update](https://registry.terraform.io/providers/microsoft/msgraph/latest/docs/resources/update_resource) (resource)
 - [msgraph_update_resource.entra_authorization_policy_update](https://registry.terraform.io/providers/microsoft/msgraph/latest/docs/resources/update_resource) (resource)
 - [msgraph_update_resource.entra_organization_update](https://registry.terraform.io/providers/microsoft/msgraph/latest/docs/resources/update_resource) (resource)
 - [msgraph_update_resource.entra_security_defaults_update](https://registry.terraform.io/providers/microsoft/msgraph/latest/docs/resources/update_resource) (resource)
 - [msgraph_update_resource.group_membership_rule](https://registry.terraform.io/providers/microsoft/msgraph/latest/docs/resources/update_resource) (resource)
-- [random_password.user](https://registry.terraform.io/providers/hashicorp/random/latest/docs/resources/password) (resource)
 - [msgraph_update_resource.groups_update](https://registry.terraform.io/providers/microsoft/msgraph/latest/docs/resources/update_resource) (resource)
+- [random_password.user](https://registry.terraform.io/providers/hashicorp/random/latest/docs/resources/password) (resource)
 - [msgraph_resource.domain_verification_records](https://registry.terraform.io/providers/microsoft/msgraph/latest/docs/data-sources/resource) (data source)
 - [msgraph_resource.domains](https://registry.terraform.io/providers/microsoft/msgraph/latest/docs/data-sources/resource) (data source)
 - [msgraph_resource.groups](https://registry.terraform.io/providers/microsoft/msgraph/latest/docs/data-sources/resource) (data source)
@@ -504,6 +505,10 @@ Description: An object describing the tenant's authentication methods policy con
       - `aa_guids` - A list of Authenticator Attestation GUIDs. AADGUIDs define key types and manufacturers.
 - `software_oath` - Configure the Software OATH policy
   - `enabled` - Represents whether users can register this authentication method. Default to `false`.
+- `sms` - Configure the SMS policy
+  - `enabled` - Represents whether users can register this authentication method. Default to `false`.
+  - `included_groups` - A list of groups that are enabled to use the authentication method. Default to `[]`.
+  - `excluded_groups` - A list of groups groups that are excluded from the policy. Default to `[]`.
 
 Type:
 
@@ -543,6 +548,11 @@ object({
     software_oath = optional(object({
       enabled = optional(bool, false)
     }), {})
+    sms = optional(object({
+      enabled         = optional(bool, false)
+      included_groups = optional(list(string), [])
+      excluded_groups = optional(list(string), [])
+    }), {})
   })
 ```
 
@@ -553,6 +563,7 @@ Default:
   "email": {},
   "fido2": {},
   "microsoft_authenticator": {},
+  "sms": {},
   "software_oath": {}
 }
 ```

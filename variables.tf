@@ -158,12 +158,18 @@ variable "authentication_methods_policy_configuration" {
     software_oath = optional(object({
       enabled = optional(bool, false)
     }), {})
+    sms = optional(object({
+      enabled         = optional(bool, false)
+      included_groups = optional(list(string), [])
+      excluded_groups = optional(list(string), [])
+    }), {})
   })
   default = {
     microsoft_authenticator = {}
     email                   = {}
     fido2                   = {}
     software_oath           = {}
+    sms                     = {}
   }
   description = <<-DESCRIPTION
   An object describing the tenant's authentication methods policy configuration:
@@ -192,6 +198,10 @@ variable "authentication_methods_policy_configuration" {
         - `aa_guids` - A list of Authenticator Attestation GUIDs. AADGUIDs define key types and manufacturers.
   - `software_oath` - Configure the Software OATH policy
     - `enabled` - Represents whether users can register this authentication method. Default to `false`.
+  - `sms` - Configure the SMS policy
+    - `enabled` - Represents whether users can register this authentication method. Default to `false`.
+    - `included_groups` - A list of groups that are enabled to use the authentication method. Default to `[]`.
+    - `excluded_groups` - A list of groups groups that are excluded from the policy. Default to `[]`.
   DESCRIPTION
 }
 

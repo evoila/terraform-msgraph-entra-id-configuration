@@ -10,7 +10,7 @@ terraform {
 
   required_providers {
     msgraph = {
-      source = "microsoft/msgraph"
+      source  = "microsoft/msgraph"
       version = "~> 0.3"
     }
   }
@@ -45,24 +45,19 @@ module "entra" {
 <!-- markdownlint-disable MD033 -->
 ## Requirements
 
-The following requirements are needed by this module:
-
-- <a name="requirement_terraform"></a> [terraform](#requirement\_terraform) (>= 1.9, < 2.0)
-
-- <a name="requirement_msgraph"></a> [msgraph](#requirement\_msgraph) (~> 0.3)
+| Name | Version |
+| ---- | ------- |
+| <a name="requirement_terraform"></a> [terraform](#requirement\_terraform) | >= 1.9, < 2.0 |
+| <a name="requirement_msgraph"></a> [msgraph](#requirement\_msgraph) | ~> 0.3 |
 
 ## Resources
 
 No resources.
 
 <!-- markdownlint-disable MD013 -->
-## Required Inputs
+## Inputs
 
-No required inputs.
-
-## Optional Inputs
-
-No optional inputs.
+No inputs.
 
 ## Outputs
 
@@ -70,13 +65,9 @@ No outputs.
 
 ## Modules
 
-The following Modules are called:
-
-### <a name="module_entra"></a> [entra](#module\_entra)
-
-Source: ../../
-
-Version:
+| Name | Source | Version |
+| ---- | ------ | ------- |
+| <a name="module_entra"></a> [entra](#module\_entra) | ../../ | n/a |
 
 ## Related documentation
 

@@ -165,3 +165,29 @@ resource "msgraph_update_resource" "entra_authentication_method_policy_software_
     "all" = "@"
   }
 }
+
+# Configure SMS authentication method
+# see https://learn.microsoft.com/en-us/graph/api/smsauthenticationmethodconfiguration-update
+# Warning: SMS authentication method will be deprecated by 1st of February 2027. See https://www.microsoft.com/en-us/security/blog/2026/07/13/microsoft-entra-id-security-updates-passkeys-are-the-default-authentication-method-in-entra-id/
+resource "msgraph_update_resource" "entra_authentication_method_policy_sms_update" {
+  url = "policies/authenticationMethodsPolicy/authenticationMethodConfigurations/sms"
+
+  body = {
+    "@odata.type" = "#microsoft.graph.smsAuthenticationMethodConfiguration"
+    state         = try(var.authentication_methods_policy_configuration.sms.enabled, false) ? "enabled" : "disabled"
+    includeTargets = [for group_id in var.authentication_methods_policy_configuration.sms.included_groups : {
+      id                     = group_id
+      isRegistrationRequired = false
+      targetType             = "group"
+    }]
+    excludeTargets = [for group_id in var.authentication_methods_policy_configuration.sms.excluded_groups : {
+      id                     = group_id
+      isRegistrationRequired = false
+      targetType             = "group"
+    }]
+  }
+
+  response_export_values = {
+    "all" = "@"
+  }
+}

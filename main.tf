@@ -24,6 +24,43 @@ resource "msgraph_update_resource" "entra_organization_update" {
   }
 }
 
+# Configure the tenant's organizational branding (default, non-localized)
+# see https://learn.microsoft.com/en-us/graph/api/organizationalbranding-update
+resource "msgraph_update_resource" "entra_organizational_branding_update" {
+  url = "organization/${var.tenant_id}/branding"
+
+  body = {
+    backgroundColor                   = var.organizational_branding_configuration.background_color
+    headerBackgroundColor             = var.organizational_branding_configuration.header_background_color
+    signInPageText                    = var.organizational_branding_configuration.sign_in_page_text
+    usernameHintText                  = var.organizational_branding_configuration.username_hint_text
+    customAccountResetCredentialsUrl  = var.organizational_branding_configuration.custom_account_reset_credentials_url
+    customCannotAccessYourAccountText = var.organizational_branding_configuration.custom_cannot_access_your_account_text
+    customForgotMyPasswordText        = var.organizational_branding_configuration.custom_forgot_my_password_text
+    customPrivacyAndCookiesText       = var.organizational_branding_configuration.custom_privacy_and_cookies_text
+    customPrivacyAndCookiesUrl        = var.organizational_branding_configuration.custom_privacy_and_cookies_url
+    customTermsOfUseText              = var.organizational_branding_configuration.custom_terms_of_use_text
+    customTermsOfUseUrl               = var.organizational_branding_configuration.custom_terms_of_use_url
+    loginPageLayoutConfiguration = {
+      layoutTemplateType = var.organizational_branding_configuration.login_page_layout_configuration.layout_template_type
+      isHeaderShown      = var.organizational_branding_configuration.login_page_layout_configuration.is_header_shown
+      isFooterShown      = var.organizational_branding_configuration.login_page_layout_configuration.is_footer_shown
+    }
+    loginPageTextVisibilitySettings = {
+      hideAccountResetCredentials = var.organizational_branding_configuration.login_page_text_visibility_settings.hide_account_reset_credentials
+      hideCannotAccessYourAccount = var.organizational_branding_configuration.login_page_text_visibility_settings.hide_cannot_access_your_account
+      hideForgotMyPassword        = var.organizational_branding_configuration.login_page_text_visibility_settings.hide_forgot_my_password
+      hidePrivacyAndCookies       = var.organizational_branding_configuration.login_page_text_visibility_settings.hide_privacy_and_cookies
+      hideResetItNow              = var.organizational_branding_configuration.login_page_text_visibility_settings.hide_reset_it_now
+      hideTermsOfUse              = var.organizational_branding_configuration.login_page_text_visibility_settings.hide_terms_of_use
+    }
+  }
+
+  response_export_values = {
+    "all" = "@"
+  }
+}
+
 # Update Entra ID authorization policy properties
 # see https://learn.microsoft.com/en-us/graph/api/authorizationpolicy-update
 resource "msgraph_update_resource" "entra_authorization_policy_update" {

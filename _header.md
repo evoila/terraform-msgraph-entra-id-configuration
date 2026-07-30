@@ -22,6 +22,7 @@ This Terraform module is designed to simplify Entra ID tenant configuration, inc
   - 🔲 [Voice](https://learn.microsoft.com/en-us/graph/api/resources/voiceauthenticationmethodconfiguration)
   - 🔲 [X509 certificate](https://learn.microsoft.com/en-us/graph/api/resources/voiceauthenticationmethodconfiguration)
 - ✅ Configure [custom domains](https://learn.microsoft.com/en-us/graph/api/resources/domain).
+- 🟦 Configure [organizational branding](https://learn.microsoft.com/en-us/graph/api/resources/organizationalbranding) (sign-in page customization). See below for current limitations.
 - 🟦 Configure [access reviews](https://learn.microsoft.com/en-us/graph/api/resources/accessreviewsv2-overview). See below for current limitations.
 
 > **NOTICE**
@@ -152,6 +153,34 @@ allowed_to_create_tenants         = false                    # Prevent users fro
 allowed_to_create_security_groups = false                    # Prevent users from creating security groups
 allow_user_apps_consent           = false                    # Require admin consent for application permissions
 block_msol_powershell             = true                     # Block access to the deprecated MSOnline PowerShell module
+```
+
+## Configuring Organizational Branding
+
+The module can configure the tenant's default (non-localized) [organizational
+branding](https://learn.microsoft.com/en-us/graph/api/resources/organizationalbranding), shown on the Microsoft
+Entra sign-in pages. Customizing branding requires an Entra ID P1 or P2 (or equivalent Office 365) license.
+
+> **NOTE**
+>
+> - Per-locale branding ([organizationalBrandingLocalization](https://learn.microsoft.com/en-us/graph/api/resources/organizationalbrandinglocalization)) is not currently supported - only the tenant-wide default branding.
+> - Logo, background image, favicon and custom CSS uploads are **not** supported by this module. Those properties are binary (`Stream`) types in Microsoft Graph that require a raw binary upload; the underlying `msgraph_update_resource` only sends JSON request bodies. Upload these assets out-of-band (for example via the Entra admin center, Graph Explorer, or a direct `PUT` request) - their resulting `*RelativeUrl` fields are still readable via the `organizational_branding_properties` output.
+
+Here is an example of configuring some basic branding properties:
+
+```hcl
+organizational_branding_configuration = {
+  background_color         = "#0F0F0F"
+  header_background_color  = "#0F0F0F"
+  sign_in_page_text        = "Contact IT support at support@contoso.com for help signing in."
+  username_hint_text       = "Use your work email address"
+  login_page_layout_configuration = {
+    layout_template_type = "verticalSplit"
+  }
+  login_page_text_visibility_settings = {
+    hide_reset_it_now = true
+  }
+}
 ```
 
 ## Configuring Access Reviews

@@ -24,6 +24,7 @@ This Terraform module is designed to simplify Entra ID tenant configuration, inc
   - 🔲 [Voice](https://learn.microsoft.com/en-us/graph/api/resources/voiceauthenticationmethodconfiguration)
   - 🔲 [X509 certificate](https://learn.microsoft.com/en-us/graph/api/resources/voiceauthenticationmethodconfiguration)
 - ✅ Configure [custom domains](https://learn.microsoft.com/en-us/graph/api/resources/domain).
+- 🟦 Configure [organizational branding](https://learn.microsoft.com/en-us/graph/api/resources/organizationalbranding) (sign-in page customization). See below for current limitations.
 - 🟦 Configure [access reviews](https://learn.microsoft.com/en-us/graph/api/resources/accessreviewsv2-overview). See below for current limitations.
 
 > **NOTICE**
@@ -156,6 +157,34 @@ allow_user_apps_consent           = false                    # Require admin con
 block_msol_powershell             = true                     # Block access to the deprecated MSOnline PowerShell module
 ```
 
+## Configuring Organizational Branding
+
+The module can configure the tenant's default (non-localized) [organizational
+branding](https://learn.microsoft.com/en-us/graph/api/resources/organizationalbranding), shown on the Microsoft
+Entra sign-in pages. Customizing branding requires an Entra ID P1 or P2 (or equivalent Office 365) license.
+
+> **NOTE**
+>
+> - Per-locale branding ([organizationalBrandingLocalization](https://learn.microsoft.com/en-us/graph/api/resources/organizationalbrandinglocalization)) is not currently supported - only the tenant-wide default branding.
+> - Logo, background image, favicon and custom CSS uploads are **not** supported by this module. Those properties are binary (`Stream`) types in Microsoft Graph that require a raw binary upload; the underlying `msgraph_update_resource` only sends JSON request bodies. Upload these assets out-of-band (for example via the Entra admin center, Graph Explorer, or a direct `PUT` request) - their resulting `*RelativeUrl` fields are still readable via the `organizational_branding_properties` output.
+
+Here is an example of configuring some basic branding properties:
+
+```hcl
+organizational_branding_configuration = {
+  background_color         = "#0F0F0F"
+  header_background_color  = "#0F0F0F"
+  sign_in_page_text        = "Contact IT support at support@contoso.com for help signing in."
+  username_hint_text       = "Use your work email address"
+  login_page_layout_configuration = {
+    layout_template_type = "verticalSplit"
+  }
+  login_page_text_visibility_settings = {
+    hide_reset_it_now = true
+  }
+}
+```
+
 ## Configuring Access Reviews
 
 The Module can currently create **single-stage** [Access Reviews](https://learn.microsoft.com/en-us/entra/id-governance/access-reviews-overview) only. Please also be aware that some Access Review features require a Microsoft Entra ID Governance or Microsoft Entra Suite license. See [License requirements](https://learn.microsoft.com/en-us/entra/id-governance/access-reviews-overview#license-requirements) for more details.
@@ -230,6 +259,7 @@ The following resources are used by this module:
 - [msgraph_update_resource.entra_authentication_method_policy_software_oath_update](https://registry.terraform.io/providers/microsoft/msgraph/latest/docs/resources/update_resource) (resource)
 - [msgraph_update_resource.entra_authorization_policy_update](https://registry.terraform.io/providers/microsoft/msgraph/latest/docs/resources/update_resource) (resource)
 - [msgraph_update_resource.entra_organization_update](https://registry.terraform.io/providers/microsoft/msgraph/latest/docs/resources/update_resource) (resource)
+- [msgraph_update_resource.entra_organizational_branding_update](https://registry.terraform.io/providers/microsoft/msgraph/latest/docs/resources/update_resource) (resource)
 - [msgraph_update_resource.entra_security_defaults_update](https://registry.terraform.io/providers/microsoft/msgraph/latest/docs/resources/update_resource) (resource)
 - [msgraph_update_resource.group_membership_rule](https://registry.terraform.io/providers/microsoft/msgraph/latest/docs/resources/update_resource) (resource)
 - [msgraph_update_resource.groups_update](https://registry.terraform.io/providers/microsoft/msgraph/latest/docs/resources/update_resource) (resource)
@@ -654,6 +684,65 @@ Type: `string`
 
 Default: `"restrictedGuestUser"`
 
+### <a name="input_organizational_branding_configuration"></a> [organizational\_branding\_configuration](#input\_organizational\_branding\_configuration)
+
+Description: An object describing the tenant's default (non-localized) organizational branding, shown on the Microsoft Entra sign-in pages. Defaults to `{}` (no branding configured). Note: logo/background-image/favicon/CSS uploads are not supported by this module, since Microsoft Graph requires a binary upload that the underlying `msgraph_update_resource` (JSON-only) cannot perform - upload these assets out-of-band, their resulting `*RelativeUrl` fields are still readable via the `organizational_branding_properties` output.
+- `background_color` - Color shown in place of the background image on low-bandwidth connections, in hexadecimal format (e.g. `#FFFFFF`). Defaults to `null`.
+- `header_background_color` - The color to apply to the header of the sign-in page, in hexadecimal format. Defaults to `null`.
+- `sign_in_page_text` - Text shown at the bottom of the sign-in box. Max 1024 characters. Defaults to `null`.
+- `username_hint_text` - Hint text shown in the username textbox on the sign-in screen. Max 64 characters. Defaults to `null`.
+- `custom_account_reset_credentials_url` - Custom URL for resetting account credentials. Max 128 characters. Defaults to `null`.
+- `custom_cannot_access_your_account_text` - Replacement text for the default "Can't access your account?" hyperlink. Max 256 characters. Defaults to `null`.
+- `custom_forgot_my_password_text` - Replacement text for the default "Forgot my password" hyperlink. Max 256 characters. Defaults to `null`.
+- `custom_privacy_and_cookies_text` - Replacement text for the default "Privacy and Cookies" hyperlink in the footer. Max 256 characters. Defaults to `null`.
+- `custom_privacy_and_cookies_url` - Custom URL for the "Privacy and Cookies" hyperlink in the footer. Max 128 characters. Defaults to `null`.
+- `custom_terms_of_use_text` - Replacement text for the default "Terms of Use" hyperlink in the footer. Max 256 characters. Defaults to `null`.
+- `custom_terms_of_use_url` - Custom URL for the "Terms of Use" hyperlink in the footer. Max 128 characters. Defaults to `null`.
+- `login_page_layout_configuration` - The layout of the sign-in page.
+  - `layout_template_type` - The layout template. Possible values are `default` (centered lightbox) or `verticalSplit`. Defaults to `null`.
+  - `is_header_shown` - Whether the header is shown on the sign-in page. Defaults to `null`.
+  - `is_footer_shown` - Whether the footer is shown on the sign-in page. Defaults to `null`.
+- `login_page_text_visibility_settings` - Options to hide various texts on the sign-in page.
+  - `hide_account_reset_credentials` - Hide the SSPR "Can't access your account?", "Forgot my password" and "Reset it now" hyperlinks. Defaults to `null`.
+  - `hide_cannot_access_your_account` - Hide the SSPR "Can't access your account?" hyperlink. Defaults to `null`.
+  - `hide_forgot_my_password` - Hide the SSPR "Forgot my password" hyperlink. Defaults to `null`.
+  - `hide_privacy_and_cookies` - Hide the "Privacy & Cookies" hyperlink in the footer. Defaults to `null`.
+  - `hide_reset_it_now` - Hide the SSPR "reset it now" hyperlink. Defaults to `null`.
+  - `hide_terms_of_use` - Hide the "Terms of Use" hyperlink in the footer. Defaults to `null`.
+
+Type:
+
+```hcl
+object({
+    background_color                       = optional(string, null)
+    header_background_color                = optional(string, null)
+    sign_in_page_text                      = optional(string, null)
+    username_hint_text                     = optional(string, null)
+    custom_account_reset_credentials_url   = optional(string, null)
+    custom_cannot_access_your_account_text = optional(string, null)
+    custom_forgot_my_password_text         = optional(string, null)
+    custom_privacy_and_cookies_text        = optional(string, null)
+    custom_privacy_and_cookies_url         = optional(string, null)
+    custom_terms_of_use_text               = optional(string, null)
+    custom_terms_of_use_url                = optional(string, null)
+    login_page_layout_configuration = optional(object({
+      layout_template_type = optional(string, null)
+      is_header_shown      = optional(bool, null)
+      is_footer_shown      = optional(bool, null)
+    }), {})
+    login_page_text_visibility_settings = optional(object({
+      hide_account_reset_credentials  = optional(bool, null)
+      hide_cannot_access_your_account = optional(bool, null)
+      hide_forgot_my_password         = optional(bool, null)
+      hide_privacy_and_cookies        = optional(bool, null)
+      hide_reset_it_now               = optional(bool, null)
+      hide_terms_of_use               = optional(bool, null)
+    }), {})
+  })
+```
+
+Default: `{}`
+
 ### <a name="input_permission_grant_policies_assigned"></a> [permission\_grant\_policies\_assigned](#input\_permission\_grant\_policies\_assigned)
 
 Description: A list of permission grant policies to assign to users. See https://learn.microsoft.com/en-us/entra/identity/enterprise-apps/configure-user-consent for more details.
@@ -785,6 +874,10 @@ Description: The tenant license level. Can be 'Free', 'P1' or 'P2'.
 ### <a name="output_organization_properties"></a> [organization\_properties](#output\_organization\_properties)
 
 Description: The tenant organization properties.
+
+### <a name="output_organizational_branding_properties"></a> [organizational\_branding\_properties](#output\_organizational\_branding\_properties)
+
+Description: The tenant's default organizational branding properties, including read-only CDN asset URLs (backgroundImageRelativeUrl, bannerLogoRelativeUrl, faviconRelativeUrl, squareLogoRelativeUrl, squareLogoDarkRelativeUrl, headerLogoRelativeUrl, customCSSRelativeUrl) for images/CSS uploaded out-of-band, since Microsoft Graph requires a binary upload not supported by this module.
 
 ### <a name="output_security_defaults_properties"></a> [security\_defaults\_properties](#output\_security\_defaults\_properties)
 

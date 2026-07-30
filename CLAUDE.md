@@ -84,6 +84,13 @@ the local `test.auto.tfvars` used for manual `terraform apply` against a real de
   to reject bad input. Complex settings (organization config, auth methods policy, domains) are grouped into
   single object variables rather than many flat variables — follow this pattern for new grouped settings.
   Variable/output descriptions here are the source of truth for the generated docs in README.md.
+  - **Null-safety in validation blocks**: never write `x == null || length(x) <= N` (or any function call after
+    `||`/`&&`) for an `optional(..., null)` field — this relies on short-circuit evaluation of `||`/`&&`, which
+    isn't guaranteed and will error on `length(null)` etc. if the function call is evaluated anyway. Instead wrap
+    the risky call in `try(...)`/`can(...)` so a `null` input can't reach it: `try(length(x) <= N, true)` for
+    length checks, `x == null || try(contains([...], x), false)` for enum checks (see `groups.visibility` and
+    `organizational_branding_configuration` for precedent), `try(can(regex(...)) && length(...) <= N, false)` for
+    combined regex+length checks (see `privacy_statement_url`).
 - **`outputs.tf`** — mostly passes through each `msgraph_update_resource.*.output.all` (wrapped in `try(...,
   null)` since some resources are conditional, e.g. `security_defaults_properties` reads
   `entra_security_defaults_update[0]`).

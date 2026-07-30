@@ -636,7 +636,7 @@ variable "users" {
 
   validation {
     condition = alltrue([
-      for k, v in var.users : v.invitation == null || contains(["Guest", "Member"], v.invitation.invited_user_type)
+      for k, v in var.users : v.invitation == null || try(contains(["Guest", "Member"], v.invitation.invited_user_type), false)
     ])
     error_message = "Each users[*].invitation.invited_user_type must be \"Guest\" or \"Member\"."
   }
@@ -653,9 +653,9 @@ variable "users" {
 
   validation {
     condition = alltrue([
-      for k, v in var.users : v.invitation == null || alltrue([
+      for k, v in var.users : v.invitation == null || try(alltrue([
         for email in v.invitation.cc_recipients : can(regex("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$", email))
-      ])
+      ]), false)
     ])
     error_message = "Each users[*].invitation.cc_recipients entry must be a valid SMTP email address."
   }

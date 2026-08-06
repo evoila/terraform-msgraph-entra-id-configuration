@@ -47,10 +47,19 @@ resource "msgraph_resource" "users" {
 # Invited creation: Microsoft Graph creates the user as a side effect of the invitation and e-mails the
 # invitee a redemption link, rather than the module assigning a password.
 # see https://learn.microsoft.com/en-us/graph/api/resources/invitation
-resource "msgraph_resource" "user_invitations" {
+#
+# Uses msgraph_resource_action rather than msgraph_resource: an invitation is a fire-once POST with no
+# corresponding GET endpoint to read back afterwards (unlike users/groups/domains). msgraph_resource
+# always issues a read-after-create GET to populate its computed attributes, and since Graph has no
+# `GET /invitations/{id}`, that GET 404s and gets retried with growing backoff, which reads as Terraform
+# hanging/timing out even though the POST itself (and the resulting user/e-mail) already succeeded.
+# msgraph_resource_action has no such read-after-create step - its output comes straight from the POST
+# response - which is also why domain_verify in domains.tf uses the same resource type.
+resource "msgraph_resource_action" "user_invitations" {
   for_each = { for key, user in var.users : key => user if user.invitation != null }
 
-  url = "invitations"
+  resource_url = "invitations"
+  method       = "POST"
 
   body = {
     invitedUserEmailAddress = each.value.invitation.invited_user_email_address
@@ -80,7 +89,7 @@ resource "msgraph_resource" "user_invitations" {
 locals {
   user_object_id = merge(
     { for key, user in msgraph_resource.users : key => user.id },
-    { for key, inv in msgraph_resource.user_invitations : key => inv.output.all.invitedUser.id },
+    { for key, inv in msgraph_resource_action.user_invitations : key => try(inv.output.all.invitedUser.id, null) },
   )
 }
 
@@ -107,7 +116,7 @@ resource "msgraph_update_resource" "user_properties" {
   }
 
   response_export_values = { "all" = "@" }
-  depends_on             = [msgraph_resource.users, msgraph_resource.user_invitations]
+  depends_on             = [msgraph_resource.users, msgraph_resource_action.user_invitations]
 }
 
 # Assign built-in Entra ID roles (tenant-wide scope only) to users, regardless of creation path.
@@ -132,5 +141,5 @@ resource "msgraph_resource" "user_role_assignments" {
   }
 
   response_export_values = { "all" = "@" }
-  depends_on             = [msgraph_resource.users, msgraph_resource.user_invitations]
+  depends_on             = [msgraph_resource.users, msgraph_resource_action.user_invitations]
 }

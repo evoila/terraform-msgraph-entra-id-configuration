@@ -199,22 +199,22 @@ run "test_invited_user_create_minimal" {
   }
 
   assert {
-    condition     = msgraph_resource.user_invitations["guest"].body.invitedUserEmailAddress == "guest.user@example.com"
+    condition     = msgraph_resource_action.user_invitations["guest"].body.invitedUserEmailAddress == "guest.user@example.com"
     error_message = "The invitation's invitedUserEmailAddress must match the configured value."
   }
 
   assert {
-    condition     = msgraph_resource.user_invitations["guest"].body.invitedUserType == "Guest"
+    condition     = msgraph_resource_action.user_invitations["guest"].body.invitedUserType == "Guest"
     error_message = "invited_user_type must default to \"Guest\"."
   }
 
   assert {
-    condition     = msgraph_resource.user_invitations["guest"].body.inviteRedirectUrl == "https://myapplications.microsoft.com/"
+    condition     = msgraph_resource_action.user_invitations["guest"].body.inviteRedirectUrl == "https://myapplications.microsoft.com/"
     error_message = "invite_redirect_url must default to https://myapplications.microsoft.com/."
   }
 
   assert {
-    condition     = msgraph_resource.user_invitations["guest"].body.sendInvitationMessage == true
+    condition     = msgraph_resource_action.user_invitations["guest"].body.sendInvitationMessage == true
     error_message = "send_invitation_message must default to true."
   }
 
@@ -246,32 +246,32 @@ run "test_invited_user_create_full" {
   }
 
   assert {
-    condition     = msgraph_resource.user_invitations["guest"].body.invitedUserType == "Member"
+    condition     = msgraph_resource_action.user_invitations["guest"].body.invitedUserType == "Member"
     error_message = "invited_user_type must match the configured value."
   }
 
   assert {
-    condition     = msgraph_resource.user_invitations["guest"].body.inviteRedirectUrl == "https://contoso.com/welcome"
+    condition     = msgraph_resource_action.user_invitations["guest"].body.inviteRedirectUrl == "https://contoso.com/welcome"
     error_message = "invite_redirect_url must match the configured value."
   }
 
   assert {
-    condition     = msgraph_resource.user_invitations["guest"].body.sendInvitationMessage == false
+    condition     = msgraph_resource_action.user_invitations["guest"].body.sendInvitationMessage == false
     error_message = "send_invitation_message must match the configured value."
   }
 
   assert {
-    condition     = msgraph_resource.user_invitations["guest"].body.invitedUserMessageInfo.customizedMessageBody == "Welcome to Contoso!"
+    condition     = msgraph_resource_action.user_invitations["guest"].body.invitedUserMessageInfo.customizedMessageBody == "Welcome to Contoso!"
     error_message = "customized_message_body must match the configured value."
   }
 
   assert {
-    condition     = jsonencode(msgraph_resource.user_invitations["guest"].body.invitedUserMessageInfo.ccRecipients) == jsonencode([{ emailAddress = { address = "onboarding@contoso.com" } }])
+    condition     = jsonencode(msgraph_resource_action.user_invitations["guest"].body.invitedUserMessageInfo.ccRecipients) == jsonencode([{ emailAddress = { address = "onboarding@contoso.com" } }])
     error_message = "cc_recipients must be wrapped into the Graph emailAddress shape."
   }
 
   assert {
-    condition     = msgraph_resource.user_invitations["guest"].body.invitedUserMessageInfo.messageLanguage == "en-US"
+    condition     = msgraph_resource_action.user_invitations["guest"].body.invitedUserMessageInfo.messageLanguage == "en-US"
     error_message = "message_language must match the configured value."
   }
 }
@@ -354,7 +354,7 @@ run "invitation_requires_allow_invites_from" {
   }
 
   expect_failures = [
-    msgraph_resource.user_invitations,
+    msgraph_resource_action.user_invitations,
   ]
 }
 

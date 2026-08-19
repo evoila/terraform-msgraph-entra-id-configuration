@@ -18,6 +18,11 @@ output "security_defaults_properties" {
   description = "The tenant security defaults properties."
 }
 
+output "organizational_branding_properties" {
+  value       = try(msgraph_update_resource.entra_organizational_branding_update.output.all, null)
+  description = "The tenant's default organizational branding properties, including read-only CDN asset URLs (backgroundImageRelativeUrl, bannerLogoRelativeUrl, faviconRelativeUrl, squareLogoRelativeUrl, squareLogoDarkRelativeUrl, headerLogoRelativeUrl, customCSSRelativeUrl) for images/CSS uploaded out-of-band, since Microsoft Graph requires a binary upload not supported by this module."
+}
+
 output "authentication_method_policy_microsoft_authenticator" {
   value       = try(msgraph_update_resource.entra_authentication_method_policy_microsoft_authenticator_update.output.all, null)
   description = "The tenant's Microsoft Authenticator authentication method confiugration."

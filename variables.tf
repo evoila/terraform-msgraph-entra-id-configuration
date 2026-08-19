@@ -55,6 +55,118 @@ variable "tenant_id" {
   description = "The Entra ID tenant id."
 }
 
+variable "organizational_branding_configuration" {
+  type = object({
+    background_color                       = optional(string, null)
+    header_background_color                = optional(string, null)
+    sign_in_page_text                      = optional(string, null)
+    username_hint_text                     = optional(string, null)
+    custom_account_reset_credentials_url   = optional(string, null)
+    custom_cannot_access_your_account_text = optional(string, null)
+    custom_forgot_my_password_text         = optional(string, null)
+    custom_privacy_and_cookies_text        = optional(string, null)
+    custom_privacy_and_cookies_url         = optional(string, null)
+    custom_terms_of_use_text               = optional(string, null)
+    custom_terms_of_use_url                = optional(string, null)
+    login_page_layout_configuration = optional(object({
+      layout_template_type = optional(string, null)
+      is_header_shown      = optional(bool, null)
+      is_footer_shown      = optional(bool, null)
+    }), {})
+    login_page_text_visibility_settings = optional(object({
+      hide_account_reset_credentials  = optional(bool, null)
+      hide_cannot_access_your_account = optional(bool, null)
+      hide_forgot_my_password         = optional(bool, null)
+      hide_privacy_and_cookies        = optional(bool, null)
+      hide_reset_it_now               = optional(bool, null)
+      hide_terms_of_use               = optional(bool, null)
+    }), {})
+  })
+  default     = {}
+  description = <<-DESCRIPTION
+  An object describing the tenant's default (non-localized) organizational branding, shown on the Microsoft Entra sign-in pages. Defaults to `{}` (no branding configured). Note: logo/background-image/favicon/CSS uploads are not supported by this module, since Microsoft Graph requires a binary upload that the underlying `msgraph_update_resource` (JSON-only) cannot perform - upload these assets out-of-band, their resulting `*RelativeUrl` fields are still readable via the `organizational_branding_properties` output.
+  - `background_color` - Color shown in place of the background image on low-bandwidth connections, in hexadecimal format (e.g. `#FFFFFF`). Defaults to `null`.
+  - `header_background_color` - The color to apply to the header of the sign-in page, in hexadecimal format. Defaults to `null`.
+  - `sign_in_page_text` - Text shown at the bottom of the sign-in box. Max 1024 characters. Defaults to `null`.
+  - `username_hint_text` - Hint text shown in the username textbox on the sign-in screen. Max 64 characters. Defaults to `null`.
+  - `custom_account_reset_credentials_url` - Custom URL for resetting account credentials. Max 128 characters. Defaults to `null`.
+  - `custom_cannot_access_your_account_text` - Replacement text for the default "Can't access your account?" hyperlink. Max 256 characters. Defaults to `null`.
+  - `custom_forgot_my_password_text` - Replacement text for the default "Forgot my password" hyperlink. Max 256 characters. Defaults to `null`.
+  - `custom_privacy_and_cookies_text` - Replacement text for the default "Privacy and Cookies" hyperlink in the footer. Max 256 characters. Defaults to `null`.
+  - `custom_privacy_and_cookies_url` - Custom URL for the "Privacy and Cookies" hyperlink in the footer. Max 128 characters. Defaults to `null`.
+  - `custom_terms_of_use_text` - Replacement text for the default "Terms of Use" hyperlink in the footer. Max 256 characters. Defaults to `null`.
+  - `custom_terms_of_use_url` - Custom URL for the "Terms of Use" hyperlink in the footer. Max 128 characters. Defaults to `null`.
+  - `login_page_layout_configuration` - The layout of the sign-in page.
+    - `layout_template_type` - The layout template. Possible values are `default` (centered lightbox) or `verticalSplit`. Defaults to `null`.
+    - `is_header_shown` - Whether the header is shown on the sign-in page. Defaults to `null`.
+    - `is_footer_shown` - Whether the footer is shown on the sign-in page. Defaults to `null`.
+  - `login_page_text_visibility_settings` - Options to hide various texts on the sign-in page.
+    - `hide_account_reset_credentials` - Hide the SSPR "Can't access your account?", "Forgot my password" and "Reset it now" hyperlinks. Defaults to `null`.
+    - `hide_cannot_access_your_account` - Hide the SSPR "Can't access your account?" hyperlink. Defaults to `null`.
+    - `hide_forgot_my_password` - Hide the SSPR "Forgot my password" hyperlink. Defaults to `null`.
+    - `hide_privacy_and_cookies` - Hide the "Privacy & Cookies" hyperlink in the footer. Defaults to `null`.
+    - `hide_reset_it_now` - Hide the SSPR "reset it now" hyperlink. Defaults to `null`.
+    - `hide_terms_of_use` - Hide the "Terms of Use" hyperlink in the footer. Defaults to `null`.
+  DESCRIPTION
+
+  validation {
+    condition = (
+      var.organizational_branding_configuration.background_color == null ||
+      can(regex("^#[0-9A-Fa-f]{6}$", var.organizational_branding_configuration.background_color))
+    )
+    error_message = "organizational_branding_configuration.background_color must be a hex color, e.g. '#FFFFFF'."
+  }
+
+  validation {
+    condition = (
+      var.organizational_branding_configuration.header_background_color == null ||
+      can(regex("^#[0-9A-Fa-f]{6}$", var.organizational_branding_configuration.header_background_color))
+    )
+    error_message = "organizational_branding_configuration.header_background_color must be a hex color, e.g. '#FFFFFF'."
+  }
+
+  validation {
+    condition     = try(length(var.organizational_branding_configuration.sign_in_page_text) <= 1024, true)
+    error_message = "organizational_branding_configuration.sign_in_page_text must be at most 1024 characters."
+  }
+
+  validation {
+    condition     = try(length(var.organizational_branding_configuration.username_hint_text) <= 64, true)
+    error_message = "organizational_branding_configuration.username_hint_text must be at most 64 characters."
+  }
+
+  validation {
+    condition = alltrue([
+      for text in [
+        var.organizational_branding_configuration.custom_cannot_access_your_account_text,
+        var.organizational_branding_configuration.custom_forgot_my_password_text,
+        var.organizational_branding_configuration.custom_privacy_and_cookies_text,
+        var.organizational_branding_configuration.custom_terms_of_use_text,
+      ] : try(length(text) <= 256, true)
+    ])
+    error_message = "organizational_branding_configuration.custom_cannot_access_your_account_text, custom_forgot_my_password_text, custom_privacy_and_cookies_text and custom_terms_of_use_text must each be at most 256 characters."
+  }
+
+  validation {
+    condition = alltrue([
+      for url in [
+        var.organizational_branding_configuration.custom_account_reset_credentials_url,
+        var.organizational_branding_configuration.custom_privacy_and_cookies_url,
+        var.organizational_branding_configuration.custom_terms_of_use_url,
+      ] : url == null || try(can(regex("^https?://", url)) && length(url) <= 128, false)
+    ])
+    error_message = "organizational_branding_configuration.custom_account_reset_credentials_url, custom_privacy_and_cookies_url and custom_terms_of_use_url must each start with http:// or https:// and be at most 128 characters."
+  }
+
+  validation {
+    condition = (
+      var.organizational_branding_configuration.login_page_layout_configuration.layout_template_type == null ||
+      try(contains(["default", "verticalSplit"], var.organizational_branding_configuration.login_page_layout_configuration.layout_template_type), false)
+    )
+    error_message = "organizational_branding_configuration.login_page_layout_configuration.layout_template_type must be 'default' or 'verticalSplit'."
+  }
+}
+
 variable "enable_security_defaults" {
   type        = bool
   description = "Enable Entra ID security defaults. Defaults to `true`. See https://learn.microsoft.com/en-us/entra/fundamentals/security-defaults for more details."

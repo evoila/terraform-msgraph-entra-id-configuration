@@ -183,7 +183,306 @@ run "test_auto_generated_password_for_missing_entry" {
   }
 }
 
+# Test case: a minimal invited user create with only the required invitation field
+run "test_invited_user_create_minimal" {
+  command = plan
+
+  variables {
+    users = {
+      guest = {
+        display_name = "Guest User"
+        invitation = {
+          invited_user_email_address = "guest.user@example.com"
+        }
+      }
+    }
+  }
+
+  assert {
+    condition     = msgraph_resource_action.user_invitations["guest"].body.invitedUserEmailAddress == "guest.user@example.com"
+    error_message = "The invitation's invitedUserEmailAddress must match the configured value."
+  }
+
+  assert {
+    condition     = msgraph_resource_action.user_invitations["guest"].body.invitedUserType == "Guest"
+    error_message = "invited_user_type must default to \"Guest\"."
+  }
+
+  assert {
+    condition     = msgraph_resource_action.user_invitations["guest"].body.inviteRedirectUrl == "https://myapplications.microsoft.com/"
+    error_message = "invite_redirect_url must default to https://myapplications.microsoft.com/."
+  }
+
+  assert {
+    condition     = msgraph_resource_action.user_invitations["guest"].body.sendInvitationMessage == true
+    error_message = "send_invitation_message must default to true."
+  }
+
+  assert {
+    condition     = !contains(keys(msgraph_resource.users), "guest")
+    error_message = "An invited user must not also be created via the direct msgraph_resource.users path."
+  }
+}
+
+# Test case: an invited user create with all invitation attributes populated
+run "test_invited_user_create_full" {
+  command = plan
+
+  variables {
+    users = {
+      guest = {
+        display_name = "Guest User"
+        invitation = {
+          invited_user_email_address = "guest.user@example.com"
+          invited_user_type          = "Member"
+          invite_redirect_url        = "https://contoso.com/welcome"
+          send_invitation_message    = false
+          customized_message_body    = "Welcome to Contoso!"
+          cc_recipients              = ["onboarding@contoso.com"]
+          message_language           = "en-US"
+        }
+      }
+    }
+  }
+
+  assert {
+    condition     = msgraph_resource_action.user_invitations["guest"].body.invitedUserType == "Member"
+    error_message = "invited_user_type must match the configured value."
+  }
+
+  assert {
+    condition     = msgraph_resource_action.user_invitations["guest"].body.inviteRedirectUrl == "https://contoso.com/welcome"
+    error_message = "invite_redirect_url must match the configured value."
+  }
+
+  assert {
+    condition     = msgraph_resource_action.user_invitations["guest"].body.sendInvitationMessage == false
+    error_message = "send_invitation_message must match the configured value."
+  }
+
+  assert {
+    condition     = msgraph_resource_action.user_invitations["guest"].body.invitedUserMessageInfo.customizedMessageBody == "Welcome to Contoso!"
+    error_message = "customized_message_body must match the configured value."
+  }
+
+  assert {
+    condition     = jsonencode(msgraph_resource_action.user_invitations["guest"].body.invitedUserMessageInfo.ccRecipients) == jsonencode([{ emailAddress = { address = "onboarding@contoso.com" } }])
+    error_message = "cc_recipients must be wrapped into the Graph emailAddress shape."
+  }
+
+  assert {
+    condition     = msgraph_resource_action.user_invitations["guest"].body.invitedUserMessageInfo.messageLanguage == "en-US"
+    error_message = "message_language must match the configured value."
+  }
+}
+
+# Test case: shared user properties (display_name, mobile_phone, etc.) are managed for invited users too
+run "test_user_properties_applied_for_invited_user" {
+  command = plan
+
+  variables {
+    users = {
+      guest = {
+        display_name   = "Guest User"
+        department     = "Sales"
+        mobile_phone   = "+1 555 0100"
+        business_phone = "+1 555 0199"
+        invitation = {
+          invited_user_email_address = "guest.user@example.com"
+        }
+      }
+    }
+  }
+
+  assert {
+    condition     = msgraph_update_resource.user_properties["guest"].body.displayName == "Guest User"
+    error_message = "The shared user_properties resource must manage displayName for invited users."
+  }
+
+  assert {
+    condition     = msgraph_update_resource.user_properties["guest"].body.department == "Sales"
+    error_message = "The shared user_properties resource must manage department for invited users."
+  }
+
+  assert {
+    condition     = jsonencode(msgraph_update_resource.user_properties["guest"].body.businessPhones) == jsonencode(["+1 555 0199"])
+    error_message = "The shared user_properties resource must wrap business_phone into a single-element list for invited users."
+  }
+}
+
+# Test case: role assignment resolves the correct roleDefinitionId for an invited user
+run "test_invited_user_role_assignment" {
+  command = plan
+
+  variables {
+    users = {
+      guest = {
+        display_name   = "Guest User"
+        assigned_roles = ["Global Reader"]
+        invitation = {
+          invited_user_email_address = "guest.user@example.com"
+        }
+      }
+    }
+  }
+
+  assert {
+    condition     = msgraph_resource.user_role_assignments["guest:Global Reader"].body.roleDefinitionId == "f2ef992c-3afb-46b9-b7cf-a126ee74c451"
+    error_message = "The role assignment must resolve to the correct built-in role template ID for an invited user."
+  }
+
+  assert {
+    condition     = msgraph_resource.user_role_assignments["guest:Global Reader"].body.directoryScopeId == "/"
+    error_message = "Role assignments created by this module must be tenant-wide scoped."
+  }
+}
+
+# Test case: invitations cannot be created while allow_invites_from = "none"
+run "invitation_requires_allow_invites_from" {
+  command = plan
+
+  variables {
+    allow_invites_from = "none"
+    users = {
+      guest = {
+        display_name = "Guest User"
+        invitation = {
+          invited_user_email_address = "guest.user@example.com"
+        }
+      }
+    }
+  }
+
+  expect_failures = [
+    msgraph_resource_action.user_invitations,
+  ]
+}
+
 # Test case: variable validation blocks should reject invalid input at plan time
+run "invalid_both_user_principal_name_and_invitation_set" {
+  command = plan
+
+  variables {
+    users = {
+      invalid = {
+        user_principal_name = "invalid.user@contoso.com"
+        display_name        = "Invalid User"
+        mail_nickname       = "invalid-user"
+        invitation = {
+          invited_user_email_address = "guest.user@example.com"
+        }
+      }
+    }
+    user_passwords = {
+      invalid = {
+        password = "P@ssw0rd1234!"
+      }
+    }
+  }
+
+  expect_failures = [
+    var.users,
+  ]
+}
+
+run "invalid_neither_user_principal_name_nor_invitation_set" {
+  command = plan
+
+  variables {
+    users = {
+      invalid = {
+        display_name = "Invalid User"
+      }
+    }
+  }
+
+  expect_failures = [
+    var.users,
+  ]
+}
+
+run "invalid_missing_mail_nickname_without_invitation" {
+  command = plan
+
+  variables {
+    users = {
+      invalid = {
+        user_principal_name = "invalid.user@contoso.com"
+        display_name        = "Invalid User"
+      }
+    }
+    user_passwords = {
+      invalid = {
+        password = "P@ssw0rd1234!"
+      }
+    }
+  }
+
+  expect_failures = [
+    var.users,
+  ]
+}
+
+run "invalid_invited_user_type" {
+  command = plan
+
+  variables {
+    users = {
+      invalid = {
+        display_name = "Invalid User"
+        invitation = {
+          invited_user_email_address = "guest.user@example.com"
+          invited_user_type          = "NotARealType"
+        }
+      }
+    }
+  }
+
+  expect_failures = [
+    var.users,
+  ]
+}
+
+run "invalid_invite_redirect_url" {
+  command = plan
+
+  variables {
+    users = {
+      invalid = {
+        display_name = "Invalid User"
+        invitation = {
+          invited_user_email_address = "guest.user@example.com"
+          invite_redirect_url        = "not-a-url"
+        }
+      }
+    }
+  }
+
+  expect_failures = [
+    var.users,
+  ]
+}
+
+run "invalid_invitation_cc_recipient" {
+  command = plan
+
+  variables {
+    users = {
+      invalid = {
+        display_name = "Invalid User"
+        invitation = {
+          invited_user_email_address = "guest.user@example.com"
+          cc_recipients              = ["not-an-email"]
+        }
+      }
+    }
+  }
+
+  expect_failures = [
+    var.users,
+  ]
+}
+
 run "invalid_user_principal_name" {
   command = plan
 

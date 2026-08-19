@@ -101,19 +101,33 @@ authentication_methods_policy_configuration = {
 The module can create and manage [users](https://learn.microsoft.com/en-us/graph/api/resources/user) and assign
 them a curated set of built-in Entra ID directory roles, tenant-wide. Its **primary use-cases** are onboarding of initial tenant admin accounts and the creation of [emergency access (break-glass) accounts](https://learn.microsoft.com/en-us/entra/identity/role-based-access-control/security-emergency-access). Use the official [Hashicorp AzureAD Terraform provider](https://registry.terraform.io/providers/hashicorp/azuread/) if you require full user-management capabilities.
 
-Initial passwords are supplied via the separate, sensitive `user_passwords` variable rather than `users` itself,
-since sensitive values cannot be used in `for_each`. Any user without a matching entry in `user_passwords` gets a
-random password auto-generated instead - the generated value is available (per user) via the `users_details`
-output.
+Each entry in `users` is created in one of two mutually exclusive ways:
+
+- **Directly** (set `user_principal_name`) - the module creates the user with a password via Microsoft Graph's
+  `/users` endpoint. Initial passwords are supplied via the separate, sensitive `user_passwords` variable rather
+  than `users` itself, since sensitive values cannot be used in `for_each`. Any user without a matching entry in
+  `user_passwords` gets a random password auto-generated instead - the generated value is available (per user)
+  via the `users_details` output.
+- **By invitation** (set `invitation`) - the module creates the user via Microsoft Graph's
+  [invitation resource](https://learn.microsoft.com/en-us/graph/api/resources/invitation), which e-mails the
+  invitee a redemption link instead of the module assigning a password. Requires `allow_invites_from != "none"`
+  (see [Configuring the Authorization Policy](#configuring-the-authorization-policy)).
+
+All other attributes - `display_name`, `mobile_phone`, `department`, `assigned_roles`, etc. - are managed
+identically regardless of which creation mode is used, including on invited users once they've redeemed (or even
+before, since Microsoft Graph creates the user object synchronously as part of the invitation).
 
 > **NOTE**
 >
 > - Adding module-created users to module-managed groups is not directly supported by the `users` variable. Add
->   the object ID (from the `user_ids` output) to the relevant entry's `members`/`owners` list in
->   [`groups`](#configuring-groups) on a subsequent `terraform apply` instead, the same way as for any pre-existing
->   user.
+>   the object ID (from the `user_ids` output, which covers both creation modes) to the relevant entry's
+>   `members`/`owners` list in [`groups`](#configuring-groups) on a subsequent `terraform apply` instead, the same
+>   way as for any pre-existing user.
 > - Role assignments are always tenant-wide scoped (`directoryScopeId = "/"`); administrative-unit-scoped role
 >   assignments are not supported.
+> - `invitation.invited_user_type` (`Guest` or `Member`) controls what kind of user Microsoft Graph creates; this
+>   is separate from `guest_user_role`, which controls the *default* role Entra ID grants any guest, however
+>   created (see [Configuring the Authorization Policy](#configuring-the-authorization-policy)).
 
 ```hcl
 users = {
@@ -124,6 +138,14 @@ users = {
     department          = "Engineering"
     usage_location       = "DE"
     assigned_roles       = ["User Administrator"]
+  }
+  external_auditor = {
+    display_name = "External Auditor"
+    department    = "Finance"
+    invitation = {
+      invited_user_email_address = "auditor@example.com"
+      customized_message_body     = "You've been invited to review Contoso's Q1 financials."
+    }
   }
 }
 

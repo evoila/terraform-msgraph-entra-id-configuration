@@ -536,9 +536,9 @@ variable "groups" {
 
 variable "users" {
   type = map(object({
-    user_principal_name                = string
+    user_principal_name                = optional(string)
     display_name                       = string
-    mail_nickname                      = string
+    mail_nickname                      = optional(string)
     account_enabled                    = optional(bool, true)
     given_name                         = optional(string)
     surname                            = optional(string)
@@ -551,17 +551,36 @@ variable "users" {
     usage_location                     = optional(string)
     force_change_password_next_sign_in = optional(bool, true)
     assigned_roles                     = optional(list(string), [])
+    invitation = optional(object({
+      invited_user_email_address = string
+      invited_user_type          = optional(string, "Guest")
+      invite_redirect_url        = optional(string, "https://myapplications.microsoft.com/")
+      send_invitation_message    = optional(bool, true)
+      customized_message_body    = optional(string)
+      cc_recipients              = optional(list(string), [])
+      message_language           = optional(string)
+    }))
   }))
   default     = {}
   description = <<-DESCRIPTION
-  A map of Entra ID users to manage. Defaults to `{}` (no users). Initial passwords are supplied via
-  the separate, sensitive `var.user_passwords` variable (kept out of `var.users` because sensitive
-  values cannot be used in `for_each`) - any key here without a matching entry in
-  `var.user_passwords` gets a random password auto-generated instead. The map key is arbitrary; the
-  value supports the following attributes:
-  - `user_principal_name` - The user's UPN (e.g. `jane.doe@contoso.com`). Must reference a verified domain of the tenant.
+  A map of Entra ID users to manage. Defaults to `{}` (no users). Each entry is created in one of two
+  mutually exclusive ways:
+  - Directly, by setting `user_principal_name` (and `mail_nickname`) - the module creates the user with a
+    password via Microsoft Graph's `/users` endpoint. Initial passwords are supplied via the separate,
+    sensitive `var.user_passwords` variable (kept out of `var.users` because sensitive values cannot be
+    used in `for_each`) - any key here without a matching entry in `var.user_passwords` gets a random
+    password auto-generated instead.
+  - By invitation, by setting `invitation` - the module creates the user via Microsoft Graph's
+    `/invitations` endpoint (see https://learn.microsoft.com/en-us/graph/api/resources/invitation), which
+    e-mails the invitee a redemption link instead of the module assigning a password. Requires
+    `var.allow_invites_from != "none"`.
+
+  All other attributes (`display_name`, `mobile_phone`, `department`, `assigned_roles`, etc.) are managed
+  identically regardless of which creation mode is used. The map key is arbitrary; the value supports the
+  following attributes:
+  - `user_principal_name` - The user's UPN (e.g. `jane.doe@contoso.com`). Must reference a verified domain of the tenant. Required unless `invitation` is set; mutually exclusive with it.
   - `display_name` - The user's display name.
-  - `mail_nickname` - The mail alias for the user, unique within the tenant.
+  - `mail_nickname` - The mail alias for the user, unique within the tenant. Required unless `invitation` is set (Microsoft Graph assigns this automatically for invited users).
   - `account_enabled` - Whether the user account is enabled. Defaults to `true`.
   - `given_name` - The user's first name.
   - `surname` - The user's last name.
@@ -572,22 +591,40 @@ variable "users" {
   - `business_phone` - The user's business phone number. Microsoft Graph models this as a string collection (`businessPhones`), but only ever stores a single number in practice, so this module exposes it as a plain string.
   - `other_mails` - A list of additional e-mail addresses for the user. Defaults to `[]`.
   - `usage_location` - Two-letter ISO 3166 country code, required if the user will be assigned a license.
-  - `force_change_password_next_sign_in` - Whether the user must change their password on next sign-in. Defaults to `true`.
+  - `force_change_password_next_sign_in` - Whether the user must change their password on next sign-in. Only relevant when `invitation` is not set. Defaults to `true`.
   - `assigned_roles` - A list of built-in Entra ID role display names to assign to the user tenant-wide. Must be one of the roles known to this module (see `local.directory_role_template_id`). Defaults to `[]`.
+  - `invitation` - If set, creates this user by invitation instead of directly. Mutually exclusive with `user_principal_name`.
+    - `invited_user_email_address` - The invitee's external e-mail address (their home identity), used to send the invitation.
+    - `invited_user_type` - The type of user to create: `Guest` or `Member`. Defaults to `Guest`.
+    - `invite_redirect_url` - URL the invitee is redirected to after redeeming the invitation. Defaults to `https://myapplications.microsoft.com/`.
+    - `send_invitation_message` - Whether Microsoft Graph should send the invitation e-mail. Defaults to `true`.
+    - `customized_message_body` - Custom text to include in the invitation e-mail.
+    - `cc_recipients` - A list of e-mail addresses to CC on the invitation e-mail. Defaults to `[]`.
+    - `message_language` - The locale to send the invitation e-mail in (e.g. `en-US`).
   DESCRIPTION
 
   validation {
-    condition = alltrue([
-      for k, v in var.users : can(regex("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$", v.user_principal_name))
-    ])
-    error_message = "Each users[*].user_principal_name must be a valid UPN (e.g. 'jane.doe@contoso.com')."
+    condition     = alltrue([for k, v in var.users : (v.user_principal_name != null) != (v.invitation != null)])
+    error_message = "Each users[*] must set exactly one of user_principal_name or invitation."
+  }
+
+  validation {
+    condition     = alltrue([for k, v in var.users : v.invitation != null || v.mail_nickname != null])
+    error_message = "Each users[*].mail_nickname is required unless invitation is set."
   }
 
   validation {
     condition = alltrue([
-      for k, v in var.users : can(regex("^[^@()\\\\\\[\\]\";:<>, ]{1,64}$", v.mail_nickname))
+      for k, v in var.users : v.user_principal_name == null || can(regex("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$", v.user_principal_name))
     ])
-    error_message = "Each users[*].mail_nickname must be 1-64 characters and must not contain @()\\[]\";:<>, or spaces."
+    error_message = "Each users[*].user_principal_name, if set, must be a valid UPN (e.g. 'jane.doe@contoso.com')."
+  }
+
+  validation {
+    condition = alltrue([
+      for k, v in var.users : v.mail_nickname == null || can(regex("^[^@()\\\\\\[\\]\";:<>, ]{1,64}$", v.mail_nickname))
+    ])
+    error_message = "Each users[*].mail_nickname, if set, must be 1-64 characters and must not contain @()\\[]\";:<>, or spaces."
   }
 
   validation {
@@ -595,6 +632,32 @@ variable "users" {
       for k, v in var.users : v.usage_location == null || can(regex("^[A-Z]{2}$", v.usage_location))
     ])
     error_message = "Each users[*].usage_location, if set, must be a valid two-letter ISO 3166 country code (e.g. 'AT', 'DE')."
+  }
+
+  validation {
+    condition = alltrue([
+      for k, v in var.users : v.invitation == null || try(contains(["Guest", "Member"], v.invitation.invited_user_type), false)
+    ])
+    error_message = "Each users[*].invitation.invited_user_type must be \"Guest\" or \"Member\"."
+  }
+
+  validation {
+    condition = alltrue([
+      for k, v in var.users : v.invitation == null || try(
+        can(regex("^https?://", v.invitation.invite_redirect_url)) && length(v.invitation.invite_redirect_url) <= 255,
+        false
+      )
+    ])
+    error_message = "Each users[*].invitation.invite_redirect_url must start with http:// or https:// and be at most 255 characters."
+  }
+
+  validation {
+    condition = alltrue([
+      for k, v in var.users : v.invitation == null || try(alltrue([
+        for email in v.invitation.cc_recipients : can(regex("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$", email))
+      ]), false)
+    ])
+    error_message = "Each users[*].invitation.cc_recipients entry must be a valid SMTP email address."
   }
 
   validation {
@@ -629,10 +692,12 @@ variable "user_passwords" {
   default     = {}
   sensitive   = true
   description = <<-DESCRIPTION
-  A map of initial passwords for the users in `var.users`, keyed with the same map keys. Kept as a
-  separate, sensitive variable because sensitive values cannot be used in `for_each`, which
-  `var.users` is. Defaults to `{}`; any key in `var.users` without a matching entry here gets a
-  random password auto-generated instead (see the `random_password.user` resource in `users.tf`).
+  A map of initial passwords for the directly-created users in `var.users` (that is, entries without
+  `invitation` set), keyed with the same map keys. Kept as a separate, sensitive variable because
+  sensitive values cannot be used in `for_each`, which `var.users` is. Defaults to `{}`; any
+  directly-created key in `var.users` without a matching entry here gets a random password
+  auto-generated instead (see the `random_password.user` resource in `users.tf`). Ignored for entries
+  with `invitation` set, since invited users authenticate via their home identity.
   - `password` - The initial password for the user. Must not be empty.
   DESCRIPTION
 

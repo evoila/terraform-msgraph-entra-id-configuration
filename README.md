@@ -103,19 +103,33 @@ authentication_methods_policy_configuration = {
 The module can create and manage [users](https://learn.microsoft.com/en-us/graph/api/resources/user) and assign
 them a curated set of built-in Entra ID directory roles, tenant-wide. Its **primary use-cases** are onboarding of initial tenant admin accounts and the creation of [emergency access (break-glass) accounts](https://learn.microsoft.com/en-us/entra/identity/role-based-access-control/security-emergency-access). Use the official [Hashicorp AzureAD Terraform provider](https://registry.terraform.io/providers/hashicorp/azuread/) if you require full user-management capabilities.
 
-Initial passwords are supplied via the separate, sensitive `user_passwords` variable rather than `users` itself,
-since sensitive values cannot be used in `for_each`. Any user without a matching entry in `user_passwords` gets a
-random password auto-generated instead - the generated value is available (per user) via the `users_details`
-output.
+Each entry in `users` is created in one of two mutually exclusive ways:
+
+- **Directly** (set `user_principal_name`) - the module creates the user with a password via Microsoft Graph's
+  `/users` endpoint. Initial passwords are supplied via the separate, sensitive `user_passwords` variable rather
+  than `users` itself, since sensitive values cannot be used in `for_each`. Any user without a matching entry in
+  `user_passwords` gets a random password auto-generated instead - the generated value is available (per user)
+  via the `users_details` output.
+- **By invitation** (set `invitation`) - the module creates the user via Microsoft Graph's
+  [invitation resource](https://learn.microsoft.com/en-us/graph/api/resources/invitation), which e-mails the
+  invitee a redemption link instead of the module assigning a password. Requires `allow_invites_from != "none"`
+  (see [Configuring the Authorization Policy](#configuring-the-authorization-policy)).
+
+All other attributes - `display_name`, `mobile_phone`, `department`, `assigned_roles`, etc. - are managed
+identically regardless of which creation mode is used, including on invited users once they've redeemed (or even
+before, since Microsoft Graph creates the user object synchronously as part of the invitation).
 
 > **NOTE**
 >
 > - Adding module-created users to module-managed groups is not directly supported by the `users` variable. Add
->   the object ID (from the `user_ids` output) to the relevant entry's `members`/`owners` list in
->   [`groups`](#configuring-groups) on a subsequent `terraform apply` instead, the same way as for any pre-existing
->   user.
+>   the object ID (from the `user_ids` output, which covers both creation modes) to the relevant entry's
+>   `members`/`owners` list in [`groups`](#configuring-groups) on a subsequent `terraform apply` instead, the same
+>   way as for any pre-existing user.
 > - Role assignments are always tenant-wide scoped (`directoryScopeId = "/"`); administrative-unit-scoped role
 >   assignments are not supported.
+> - `invitation.invited_user_type` (`Guest` or `Member`) controls what kind of user Microsoft Graph creates; this
+>   is separate from `guest_user_role`, which controls the *default* role Entra ID grants any guest, however
+>   created (see [Configuring the Authorization Policy](#configuring-the-authorization-policy)).
 
 ```hcl
 users = {
@@ -126,6 +140,14 @@ users = {
     department          = "Engineering"
     usage_location       = "DE"
     assigned_roles       = ["User Administrator"]
+  }
+  external_auditor = {
+    display_name = "External Auditor"
+    department    = "Finance"
+    invitation = {
+      invited_user_email_address = "auditor@example.com"
+      customized_message_body     = "You've been invited to review Contoso's Q1 financials."
+    }
   }
 }
 
@@ -217,6 +239,7 @@ The following resources are used by this module:
 - [msgraph_resource.access_review_definition](https://registry.terraform.io/providers/microsoft/msgraph/latest/docs/resources/resource) (resource)
 - [msgraph_resource.domains](https://registry.terraform.io/providers/microsoft/msgraph/latest/docs/resources/resource) (resource)
 - [msgraph_resource.groups](https://registry.terraform.io/providers/microsoft/msgraph/latest/docs/resources/resource) (resource)
+- [msgraph_resource.user_invitations](https://registry.terraform.io/providers/microsoft/msgraph/latest/docs/resources/resource) (resource)
 - [msgraph_resource.user_role_assignments](https://registry.terraform.io/providers/microsoft/msgraph/latest/docs/resources/resource) (resource)
 - [msgraph_resource.users](https://registry.terraform.io/providers/microsoft/msgraph/latest/docs/resources/resource) (resource)
 - [msgraph_resource_action.domain_verify](https://registry.terraform.io/providers/microsoft/msgraph/latest/docs/resources/resource_action) (resource)
@@ -233,6 +256,7 @@ The following resources are used by this module:
 - [msgraph_update_resource.entra_security_defaults_update](https://registry.terraform.io/providers/microsoft/msgraph/latest/docs/resources/update_resource) (resource)
 - [msgraph_update_resource.group_membership_rule](https://registry.terraform.io/providers/microsoft/msgraph/latest/docs/resources/update_resource) (resource)
 - [msgraph_update_resource.groups_update](https://registry.terraform.io/providers/microsoft/msgraph/latest/docs/resources/update_resource) (resource)
+- [msgraph_update_resource.user_properties](https://registry.terraform.io/providers/microsoft/msgraph/latest/docs/resources/update_resource) (resource)
 - [random_password.user](https://registry.terraform.io/providers/hashicorp/random/latest/docs/resources/password) (resource)
 - [msgraph_resource.domain_verification_records](https://registry.terraform.io/providers/microsoft/msgraph/latest/docs/data-sources/resource) (data source)
 - [msgraph_resource.domains](https://registry.terraform.io/providers/microsoft/msgraph/latest/docs/data-sources/resource) (data source)
@@ -671,10 +695,12 @@ Default:
 
 ### <a name="input_user_passwords"></a> [user\_passwords](#input\_user\_passwords)
 
-Description: A map of initial passwords for the users in `var.users`, keyed with the same map keys. Kept as a  
-separate, sensitive variable because sensitive values cannot be used in `for_each`, which
-`var.users` is. Defaults to `{}`; any key in `var.users` without a matching entry here gets a  
-random password auto-generated instead (see the `random_password.user` resource in `users.tf`).
+Description: A map of initial passwords for the directly-created users in `var.users` (that is, entries without
+`invitation` set), keyed with the same map keys. Kept as a separate, sensitive variable because  
+sensitive values cannot be used in `for_each`, which `var.users` is. Defaults to `{}`; any  
+directly-created key in `var.users` without a matching entry here gets a random password  
+auto-generated instead (see the `random_password.user` resource in `users.tf`). Ignored for entries  
+with `invitation` set, since invited users authenticate via their home identity.
 - `password` - The initial password for the user. Must not be empty.
 
 Type:
@@ -689,14 +715,24 @@ Default: `{}`
 
 ### <a name="input_users"></a> [users](#input\_users)
 
-Description: A map of Entra ID users to manage. Defaults to `{}` (no users). Initial passwords are supplied via  
-the separate, sensitive `var.user_passwords` variable (kept out of `var.users` because sensitive  
-values cannot be used in `for_each`) - any key here without a matching entry in
-`var.user_passwords` gets a random password auto-generated instead. The map key is arbitrary; the  
-value supports the following attributes:
-- `user_principal_name` - The user's UPN (e.g. `jane.doe@contoso.com`). Must reference a verified domain of the tenant.
+Description: A map of Entra ID users to manage. Defaults to `{}` (no users). Each entry is created in one of two  
+mutually exclusive ways:
+- Directly, by setting `user_principal_name` (and `mail_nickname`) - the module creates the user with a  
+  password via Microsoft Graph's `/users` endpoint. Initial passwords are supplied via the separate,  
+  sensitive `var.user_passwords` variable (kept out of `var.users` because sensitive values cannot be  
+  used in `for_each`) - any key here without a matching entry in `var.user_passwords` gets a random  
+  password auto-generated instead.
+- By invitation, by setting `invitation` - the module creates the user via Microsoft Graph's
+  `/invitations` endpoint (see https://learn.microsoft.com/en-us/graph/api/resources/invitation), which  
+  e-mails the invitee a redemption link instead of the module assigning a password. Requires
+  `var.allow_invites_from != "none"`.
+
+All other attributes (`display_name`, `mobile_phone`, `department`, `assigned_roles`, etc.) are managed  
+identically regardless of which creation mode is used. The map key is arbitrary; the value supports the  
+following attributes:
+- `user_principal_name` - The user's UPN (e.g. `jane.doe@contoso.com`). Must reference a verified domain of the tenant. Required unless `invitation` is set; mutually exclusive with it.
 - `display_name` - The user's display name.
-- `mail_nickname` - The mail alias for the user, unique within the tenant.
+- `mail_nickname` - The mail alias for the user, unique within the tenant. Required unless `invitation` is set (Microsoft Graph assigns this automatically for invited users).
 - `account_enabled` - Whether the user account is enabled. Defaults to `true`.
 - `given_name` - The user's first name.
 - `surname` - The user's last name.
@@ -707,16 +743,24 @@ value supports the following attributes:
 - `business_phone` - The user's business phone number. Microsoft Graph models this as a string collection (`businessPhones`), but only ever stores a single number in practice, so this module exposes it as a plain string.
 - `other_mails` - A list of additional e-mail addresses for the user. Defaults to `[]`.
 - `usage_location` - Two-letter ISO 3166 country code, required if the user will be assigned a license.
-- `force_change_password_next_sign_in` - Whether the user must change their password on next sign-in. Defaults to `true`.
+- `force_change_password_next_sign_in` - Whether the user must change their password on next sign-in. Only relevant when `invitation` is not set. Defaults to `true`.
 - `assigned_roles` - A list of built-in Entra ID role display names to assign to the user tenant-wide. Must be one of the roles known to this module (see `local.directory_role_template_id`). Defaults to `[]`.
+- `invitation` - If set, creates this user by invitation instead of directly. Mutually exclusive with `user_principal_name`.
+  - `invited_user_email_address` - The invitee's external e-mail address (their home identity), used to send the invitation.
+  - `invited_user_type` - The type of user to create: `Guest` or `Member`. Defaults to `Guest`.
+  - `invite_redirect_url` - URL the invitee is redirected to after redeeming the invitation. Defaults to `https://myapplications.microsoft.com/`.
+  - `send_invitation_message` - Whether Microsoft Graph should send the invitation e-mail. Defaults to `true`.
+  - `customized_message_body` - Custom text to include in the invitation e-mail.
+  - `cc_recipients` - A list of e-mail addresses to CC on the invitation e-mail. Defaults to `[]`.
+  - `message_language` - The locale to send the invitation e-mail in (e.g. `en-US`).
 
 Type:
 
 ```hcl
 map(object({
-    user_principal_name                = string
+    user_principal_name                = optional(string)
     display_name                       = string
-    mail_nickname                      = string
+    mail_nickname                      = optional(string)
     account_enabled                    = optional(bool, true)
     given_name                         = optional(string)
     surname                            = optional(string)
@@ -729,6 +773,15 @@ map(object({
     usage_location                     = optional(string)
     force_change_password_next_sign_in = optional(bool, true)
     assigned_roles                     = optional(list(string), [])
+    invitation = optional(object({
+      invited_user_email_address = string
+      invited_user_type          = optional(string, "Guest")
+      invite_redirect_url        = optional(string, "https://myapplications.microsoft.com/")
+      send_invitation_message    = optional(bool, true)
+      customized_message_body    = optional(string)
+      cc_recipients              = optional(list(string), [])
+      message_language           = optional(string)
+    }))
   }))
 ```
 
@@ -792,7 +845,7 @@ Description: The tenant security defaults properties.
 
 ### <a name="output_user_ids"></a> [user\_ids](#output\_user\_ids)
 
-Description: Object IDs of all managed users, keyed by the map key used in var.users. Useful for referencing module-created users in var.groups[*].members/owners on a later apply.
+Description: Object IDs of all managed users (both directly-created and invited), keyed by the map key used in var.users. Useful for referencing module-created users in var.groups[*].members/owners on a later apply.
 
 ### <a name="output_users_details"></a> [users\_details](#output\_users\_details)
 

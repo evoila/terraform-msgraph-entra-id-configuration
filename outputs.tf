@@ -64,11 +64,11 @@ output "group_ids" {
 }
 
 output "user_ids" {
-  value       = { for key, user in msgraph_resource.users : key => user.id }
-  description = "Object IDs of all managed users, keyed by the map key used in var.users. Useful for referencing module-created users in var.groups[*].members/owners on a later apply."
+  value       = local.user_object_id
+  description = "Object IDs of all managed users (both directly-created and invited), keyed by the map key used in var.users. Useful for referencing module-created users in var.groups[*].members/owners on a later apply."
 }
 
 output "users_details" {
-  value       = { for key, user in msgraph_resource.users : user.id => try(user.output.all, {}) }
+  value       = { for key, id in local.user_object_id : id => try(msgraph_update_resource.user_properties[key].output.all, {}) }
   description = "All configured users, keyed by user object ID, reflecting configured state."
 }

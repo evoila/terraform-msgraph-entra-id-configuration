@@ -38,6 +38,11 @@ output "authentication_method_policy_software_oath" {
   description = "The tenant's software OATH authentication method confiugration."
 }
 
+output "authentication_method_policy_qr_code_pin" {
+  value       = try(msgraph_update_resource.entra_authentication_method_policy_qr_code_pin_update.output.all, null)
+  description = "The tenant's QR code PIN authentication method configuration."
+}
+
 output "default_domain" {
   value       = one([for domain in try(data.msgraph_resource.domains.output.all.value, {}) : domain.id if domain.isDefault == true])
   description = "Tenant default domain."

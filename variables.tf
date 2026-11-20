@@ -163,6 +163,13 @@ variable "authentication_methods_policy_configuration" {
       included_groups = optional(list(string), [])
       excluded_groups = optional(list(string), [])
     }), {})
+    qr_code_pin = optional(object({
+      enabled                           = optional(bool, false)
+      pin_length                        = optional(number, 8)
+      standard_qr_code_lifetime_in_days = optional(number, 365)
+      included_groups                   = optional(list(string), [])
+      excluded_groups                   = optional(list(string), [])
+    }), {})
   })
   default = {
     microsoft_authenticator = {}
@@ -170,6 +177,7 @@ variable "authentication_methods_policy_configuration" {
     fido2                   = {}
     software_oath           = {}
     sms                     = {}
+    qr_code_pin             = {}
   }
   description = <<-DESCRIPTION
   An object describing the tenant's authentication methods policy configuration:
@@ -202,7 +210,31 @@ variable "authentication_methods_policy_configuration" {
     - `enabled` - Represents whether users can register this authentication method. Default to `false`.
     - `included_groups` - A list of groups that are enabled to use the authentication method. Default to `[]`.
     - `excluded_groups` - A list of groups groups that are excluded from the policy. Default to `[]`.
+  - `qr_code_pin` - Configure the QR code PIN policy
+    - `enabled` - Enables or disables the authentication method. Default to `false`.
+    - `pin_length` - The required length of the PIN. Must be between `8` (NIST minimum) and `20` digits. Default to `8`.
+    - `standard_qr_code_lifetime_in_days` - The lifetime of standard QR codes in days. Must be between `1` and `395` (13 months). Default to `365`.
+    - `included_groups` - A list of groups that are enabled to use the authentication method. Default to `[]`.
+    - `excluded_groups` - A list of groups groups that are excluded from the policy. Default to `[]`.
   DESCRIPTION
+
+  validation {
+    condition = (
+      floor(var.authentication_methods_policy_configuration.qr_code_pin.pin_length) == var.authentication_methods_policy_configuration.qr_code_pin.pin_length &&
+      var.authentication_methods_policy_configuration.qr_code_pin.pin_length >= 8 &&
+      var.authentication_methods_policy_configuration.qr_code_pin.pin_length <= 20
+    )
+    error_message = "authentication_methods_policy_configuration.qr_code_pin.pin_length must be a whole number between 8 and 20."
+  }
+
+  validation {
+    condition = (
+      floor(var.authentication_methods_policy_configuration.qr_code_pin.standard_qr_code_lifetime_in_days) == var.authentication_methods_policy_configuration.qr_code_pin.standard_qr_code_lifetime_in_days &&
+      var.authentication_methods_policy_configuration.qr_code_pin.standard_qr_code_lifetime_in_days >= 1 &&
+      var.authentication_methods_policy_configuration.qr_code_pin.standard_qr_code_lifetime_in_days <= 395
+    )
+    error_message = "authentication_methods_policy_configuration.qr_code_pin.standard_qr_code_lifetime_in_days must be a whole number between 1 and 395."
+  }
 }
 
 variable "domains" {

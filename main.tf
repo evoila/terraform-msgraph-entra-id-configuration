@@ -191,3 +191,32 @@ resource "msgraph_update_resource" "entra_authentication_method_policy_sms_updat
     "all" = "@"
   }
 }
+
+# Configure QR code PIN authentication method
+# see https://learn.microsoft.com/en-us/graph/api/qrcodepinauthenticationmethodconfiguration-update
+# Note: this is a tenant-level singleton - it is always updated (PATCH), never created. includeTargets is modelled as a
+# relationship in the Graph API docs, but (as for email, FIDO2 and SMS) it is accepted in the same PATCH request.
+resource "msgraph_update_resource" "entra_authentication_method_policy_qr_code_pin_update" {
+  url = "policies/authenticationMethodsPolicy/authenticationMethodConfigurations/qrCodePin"
+
+  body = {
+    "@odata.type"                = "#microsoft.graph.qrCodePinAuthenticationMethodConfiguration"
+    state                        = var.authentication_methods_policy_configuration.qr_code_pin.enabled ? "enabled" : "disabled"
+    pinLength                    = var.authentication_methods_policy_configuration.qr_code_pin.pin_length
+    standardQRCodeLifetimeInDays = var.authentication_methods_policy_configuration.qr_code_pin.standard_qr_code_lifetime_in_days
+    includeTargets = [for group_id in var.authentication_methods_policy_configuration.qr_code_pin.included_groups : {
+      id                     = group_id
+      isRegistrationRequired = false
+      targetType             = "group"
+    }]
+    excludeTargets = [for group_id in var.authentication_methods_policy_configuration.qr_code_pin.excluded_groups : {
+      id                     = group_id
+      isRegistrationRequired = false
+      targetType             = "group"
+    }]
+  }
+
+  response_export_values = {
+    "all" = "@"
+  }
+}

@@ -16,7 +16,7 @@ This Terraform module is designed to simplify Entra ID tenant configuration, inc
   - 🔲 [External MFA](https://learn.microsoft.com/en-us/graph/api/resources/externalauthenticationmethodconfiguration)
   - ✅ [FIDO2](https://learn.microsoft.com/en-us/graph/api/resources/fido2authenticationmethodconfiguration)
   - ✅ [Microsoft Authenticator](https://learn.microsoft.com/en-us/graph/api/resources/microsoftauthenticatorauthenticationmethodconfiguration)
-  - 🔲 [QR code pin](https://learn.microsoft.com/en-us/graph/api/resources/qrcodepinauthenticationmethodconfiguration)
+  - ✅ [QR code pin](https://learn.microsoft.com/en-us/graph/api/resources/qrcodepinauthenticationmethodconfiguration)
   - 🔲 [SMS](https://learn.microsoft.com/en-us/graph/api/resources/smsauthenticationmethodconfiguration)
   - 🔲 [Temporary Access Pass](https://learn.microsoft.com/en-us/graph/api/resources/temporaryaccesspassauthenticationmethodconfiguration) (TAP)
   - ✅ [Software OATH](https://learn.microsoft.com/en-us/graph/api/resources/softwareoathauthenticationmethodconfiguration)
@@ -249,6 +249,7 @@ The following resources are used by this module:
 - [msgraph_update_resource.entra_authentication_method_policy_email_update](https://registry.terraform.io/providers/microsoft/msgraph/latest/docs/resources/update_resource) (resource)
 - [msgraph_update_resource.entra_authentication_method_policy_fido2_update](https://registry.terraform.io/providers/microsoft/msgraph/latest/docs/resources/update_resource) (resource)
 - [msgraph_update_resource.entra_authentication_method_policy_microsoft_authenticator_update](https://registry.terraform.io/providers/microsoft/msgraph/latest/docs/resources/update_resource) (resource)
+- [msgraph_update_resource.entra_authentication_method_policy_qr_code_pin_update](https://registry.terraform.io/providers/microsoft/msgraph/latest/docs/resources/update_resource) (resource)
 - [msgraph_update_resource.entra_authentication_method_policy_sms_update](https://registry.terraform.io/providers/microsoft/msgraph/latest/docs/resources/update_resource) (resource)
 - [msgraph_update_resource.entra_authentication_method_policy_software_oath_update](https://registry.terraform.io/providers/microsoft/msgraph/latest/docs/resources/update_resource) (resource)
 - [msgraph_update_resource.entra_authorization_policy_update](https://registry.terraform.io/providers/microsoft/msgraph/latest/docs/resources/update_resource) (resource)
@@ -533,6 +534,12 @@ Description: An object describing the tenant's authentication methods policy con
   - `enabled` - Represents whether users can register this authentication method. Default to `false`.
   - `included_groups` - A list of groups that are enabled to use the authentication method. Default to `[]`.
   - `excluded_groups` - A list of groups groups that are excluded from the policy. Default to `[]`.
+- `qr_code_pin` - Configure the QR code PIN policy
+  - `enabled` - Enables or disables the authentication method. Default to `false`.
+  - `pin_length` - The required length of the PIN. Must be between `8` (NIST minimum) and `20` digits. Default to `8`.
+  - `standard_qr_code_lifetime_in_days` - The lifetime of standard QR codes in days. Must be between `1` and `395` (13 months). Default to `365`.
+  - `included_groups` - A list of groups that are enabled to use the authentication method. Default to `[]`.
+  - `excluded_groups` - A list of groups groups that are excluded from the policy. Default to `[]`.
 
 Type:
 
@@ -577,6 +584,13 @@ object({
       included_groups = optional(list(string), [])
       excluded_groups = optional(list(string), [])
     }), {})
+    qr_code_pin = optional(object({
+      enabled                           = optional(bool, false)
+      pin_length                        = optional(number, 8)
+      standard_qr_code_lifetime_in_days = optional(number, 365)
+      included_groups                   = optional(list(string), [])
+      excluded_groups                   = optional(list(string), [])
+    }), {})
   })
 ```
 
@@ -587,6 +601,7 @@ Default:
   "email": {},
   "fido2": {},
   "microsoft_authenticator": {},
+  "qr_code_pin": {},
   "sms": {},
   "software_oath": {}
 }
@@ -798,6 +813,10 @@ Description: The tenant's email authentication method confiugration.
 ### <a name="output_authentication_method_policy_microsoft_authenticator"></a> [authentication\_method\_policy\_microsoft\_authenticator](#output\_authentication\_method\_policy\_microsoft\_authenticator)
 
 Description: The tenant's Microsoft Authenticator authentication method confiugration.
+
+### <a name="output_authentication_method_policy_qr_code_pin"></a> [authentication\_method\_policy\_qr\_code\_pin](#output\_authentication\_method\_policy\_qr\_code\_pin)
+
+Description: The tenant's QR code PIN authentication method configuration.
 
 ### <a name="output_authentication_method_policy_software_oath"></a> [authentication\_method\_policy\_software\_oath](#output\_authentication\_method\_policy\_software\_oath)
 

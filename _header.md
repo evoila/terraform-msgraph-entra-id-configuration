@@ -14,7 +14,7 @@ This Terraform module is designed to simplify Entra ID tenant configuration, inc
   - 🔲 [External MFA](https://learn.microsoft.com/en-us/graph/api/resources/externalauthenticationmethodconfiguration)
   - ✅ [FIDO2](https://learn.microsoft.com/en-us/graph/api/resources/fido2authenticationmethodconfiguration)
   - ✅ [Microsoft Authenticator](https://learn.microsoft.com/en-us/graph/api/resources/microsoftauthenticatorauthenticationmethodconfiguration)
-  - 🔲 [QR code pin](https://learn.microsoft.com/en-us/graph/api/resources/qrcodepinauthenticationmethodconfiguration)
+  - ✅ [QR code pin](https://learn.microsoft.com/en-us/graph/api/resources/qrcodepinauthenticationmethodconfiguration)
   - 🔲 [SMS](https://learn.microsoft.com/en-us/graph/api/resources/smsauthenticationmethodconfiguration)
   - 🔲 [Temporary Access Pass](https://learn.microsoft.com/en-us/graph/api/resources/temporaryaccesspassauthenticationmethodconfiguration) (TAP)
   - ✅ [Software OATH](https://learn.microsoft.com/en-us/graph/api/resources/softwareoathauthenticationmethodconfiguration)

@@ -8,7 +8,7 @@ A Terraform module (not a deployable root config) that configures a Microsoft En
 [Microsoft Graph Terraform provider](https://registry.terraform.io/providers/microsoft/msgraph/latest/docs)
 (`msgraph_resource`, `msgraph_update_resource`, `msgraph_resource_action`, `msgraph_resource` data source). It
 automates organization settings, the authorization policy, security defaults, authentication methods policies
-(email OTP, FIDO2, Microsoft Authenticator, software OATH), and custom domains, aiming to encode Microsoft's
+(email OTP, FIDO2, Microsoft Authenticator, software OATH, SMS, QR code PIN), and custom domains, aiming to encode Microsoft's
 [Entra ID best practices](https://learn.microsoft.com/en-us/entra/architecture/secure-best-practices). The module
 is an MVP under active development — see the feature checklist in README.md for what's implemented vs. planned.
 
@@ -63,7 +63,7 @@ the local `test.auto.tfvars` used for manual `terraform apply` against a real de
 ## Architecture
 
 - **`main.tf`** — core tenant-wide resources: organization properties, authorization policy, security defaults,
-  and the four authentication method policies (Microsoft Authenticator, email, FIDO2, software OATH). Each is a
+  and the authentication method policies (Microsoft Authenticator, email, FIDO2, software OATH, SMS, QR code PIN). Each is a
   single `msgraph_update_resource` (PATCH-style) targeting a fixed Graph API path (e.g.
   `policies/authenticationMethodsPolicy/authenticationMethodConfigurations/fido2`), translating snake_case
   Terraform variables into the camelCase Graph API body.
